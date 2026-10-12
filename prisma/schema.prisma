@@ -41,7 +41,7 @@ model User {
   paymentVerificationSource String?       @map("payment_verification_source") @db.VarChar(50)
   paymentVerifiedAt         DateTime?     @map("payment_verified_at")
   createdAt                 DateTime      @default(now()) @map("created_at")
-  updatedAt                 DateTime      @updatedAt @map("updated_at")
+  updatedAt                 DateTime      @updatedAt @default(now()) @map("updated_at")
 
   primaryPartnership Partner?          @relation("PrimaryUser")
   partnerPartnership Partner?          @relation("PartnerUser")
@@ -61,7 +61,7 @@ model Partner {
   partnerEmail  String        @unique @map("partner_email") @db.VarChar(255)
   status        PartnerStatus @default(PENDING)
   createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  updatedAt     DateTime      @updatedAt @default(now()) @map("updated_at")
 
   primaryUser User  @relation("PrimaryUser", fields: [primaryUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   partnerUser User? @relation("PartnerUser", fields: [partnerUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -78,7 +78,7 @@ model CourseChapter {
   chapterOrder Int      @map("chapter_order")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  updatedAt    DateTime @updatedAt @default(now()) @map("updated_at")
 
   chapterProgress ChapterProgress[]
 
@@ -96,7 +96,7 @@ model Progress {
   completed          Boolean  @default(false)
   completedAt        DateTime? @map("completed_at")
   createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  updatedAt          DateTime @updatedAt @default(now()) @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -112,7 +112,7 @@ model ChapterProgress {
   completed   Boolean   @default(false)
   completedAt DateTime? @map("completed_at")
   createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  updatedAt   DateTime  @updatedAt @default(now()) @map("updated_at")
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   chapter CourseChapter @relation(fields: [chapterId], references: [chapterId], onDelete: Restrict, onUpdate: Cascade)

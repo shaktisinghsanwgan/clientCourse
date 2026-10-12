@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "prisma migrate deploy && node src/server.js",
+    "start": "node scripts/start.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

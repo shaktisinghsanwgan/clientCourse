@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { ensureDatabaseUrl } from './database-url.js';
 
 if (process.env.NODE_ENV === 'test') {
   dotenv.config({ path: '.env.test', override: true });
@@ -6,32 +7,7 @@ if (process.env.NODE_ENV === 'test') {
   dotenv.config();
 }
 
-function railwayMysqlUrl() {
-  const provided = process.env.MYSQL_URL || process.env.MYSQL_PUBLIC_URL || '';
-  if (provided.trim()) {
-    return provided.trim();
-  }
-
-  const host = process.env.MYSQLHOST;
-  const user = process.env.MYSQLUSER;
-  const password = process.env.MYSQLPASSWORD;
-  const database = process.env.MYSQLDATABASE;
-  const port = process.env.MYSQLPORT || '3306';
-  if (!host || !user || password == null || password === '' || !database) {
-    return '';
-  }
-  return `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
-}
-
-const databaseUrl = (process.env.DATABASE_URL || '').trim() || railwayMysqlUrl();
-if (databaseUrl) {
-  const needsPool = process.env.NODE_ENV !== 'test'
-    && databaseUrl.startsWith('mysql://')
-    && !databaseUrl.includes('connection_limit=');
-  process.env.DATABASE_URL = needsPool
-    ? `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}connection_limit=5`
-    : databaseUrl;
-}
+ensureDatabaseUrl();
 
 function required(name) {
   const value = process.env[name];

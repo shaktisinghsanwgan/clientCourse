@@ -31,13 +31,13 @@ async function assertKajabiIdAvailable(kajabiUserId, email) {
 
 function verificationFields(verification, existing) {
   const fields = {
-    kajabiUserId: existing?.kajabiUserId ?? null,
     paymentStatus: existing?.paymentStatus || 'PENDING',
-    purchaseReference: existing?.purchaseReference ?? null,
-    offerReference: existing?.offerReference ?? null,
-    paymentVerificationSource: existing?.paymentVerificationSource ?? null,
-    paymentVerifiedAt: existing?.paymentVerifiedAt ?? null,
   };
+  if (existing?.kajabiUserId) fields.kajabiUserId = existing.kajabiUserId;
+  if (existing?.purchaseReference) fields.purchaseReference = existing.purchaseReference;
+  if (existing?.offerReference) fields.offerReference = existing.offerReference;
+  if (existing?.paymentVerificationSource) fields.paymentVerificationSource = existing.paymentVerificationSource;
+  if (existing?.paymentVerifiedAt) fields.paymentVerifiedAt = existing.paymentVerifiedAt;
 
   if (!verification.configured || !verification.customer) {
     return fields;

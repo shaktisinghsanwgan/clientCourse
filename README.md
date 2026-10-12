@@ -159,6 +159,8 @@ Create two services in one Railway project:
 1. **MySQL** from the Railway MySQL template.
 2. **This API** from this GitHub repository. Railway reads `railway.toml`.
 
+`npm start` reads `DATABASE_URL`, or builds it from Railway's `MYSQL_URL` / `MYSQLHOST` variables, before Prisma runs. Those MySQL variables are not copied onto the API service automatically.
+
 On the API service, set these variables before the first successful deploy:
 
 | Variable | Value |
