@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PRIMARY
+  PARTNER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+}
+
+model User {
+  id                        BigInt        @id @default(autoincrement())
+  kajabiUserId              String?       @unique @map("kajabi_user_id") @db.VarChar(255)
+  name                      String        @db.VarChar(150)
+  email                     String        @unique @db.VarChar(255)
+  role                      UserRole
+  paymentStatus             PaymentStatus @default(PENDING) @map("payment_status")
+  status                    UserStatus    @default(ACTIVE)
+  emailVerified             Boolean       @default(false) @map("email_verified")
+  purchaseReference         String?       @map("purchase_reference") @db.VarChar(255)
+  offerReference            String?       @map("offer_reference") @db.VarChar(255)
+  paymentVerificationSource String?       @map("payment_verification_source") @db.VarChar(50)
+  paymentVerifiedAt         DateTime?     @map("payment_verified_at")
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+
+  primaryPartnership Partner?          @relation("PrimaryUser")
+  partnerPartnership Partner?          @relation("PartnerUser")
+  progress           Progress[]
+  chapterProgress    ChapterProgress[]
+
+  @@index([role])
+  @@index([paymentStatus])
+  @@map("users")
+}
+
+model Partner {
+  id            BigInt        @id @default(autoincrement())
+  primaryUserId BigInt        @unique @map("primary_user_id")
+  partnerUserId BigInt?       @unique @map("partner_user_id")
+  partnerName   String        @map("partner_name") @db.VarChar(150)
+  partnerEmail  String        @unique @map("partner_email") @db.VarChar(255)
+  status        PartnerStatus @default(PENDING)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  primaryUser User  @relation("PrimaryUser", fields: [primaryUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  partnerUser User? @relation("PartnerUser", fields: [partnerUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([status])
+  @@map("partners")
+}
+
+model CourseChapter {
+  id           BigInt   @id @default(autoincrement())
+  weekNumber   Int      @map("week_number")
+  chapterId    String   @unique @map("chapter_id") @db.VarChar(100)
+  chapterName  String   @map("chapter_name") @db.VarChar(255)
+  chapterOrder Int      @map("chapter_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  chapterProgress ChapterProgress[]
+
+  @@index([weekNumber, isActive])
+  @@map("course_chapters")
+}
+
+model Progress {
+  id                 BigInt   @id @default(autoincrement())
+  userId             BigInt   @map("user_id")
+  weekNumber         Int      @map("week_number")
+  totalChapters      Int      @map("total_chapters")
+  completedChapters  Int      @map("completed_chapters")
+  progressPercentage Decimal  @map("progress_percentage") @db.Decimal(5, 2)
+  completed          Boolean  @default(false)
+  completedAt        DateTime? @map("completed_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, weekNumber])
+  @@index([weekNumber])
+  @@map("progress")
+}
+
+model ChapterProgress {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt    @map("user_id")
+  chapterId   String    @map("chapter_id") @db.VarChar(100)
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  chapter CourseChapter @relation(fields: [chapterId], references: [chapterId], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([chapterId])
+  @@map("chapter_progress")
+}
+
+model EmailConfirmation {
+  id         BigInt    @id @default(autoincrement())
+  email      String    @db.VarChar(255)
+  codeHash   String    @map("code_hash") @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at")
+  attempts   Int       @default(0)
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([email, createdAt])
+  @@map("email_confirmations")
+}
