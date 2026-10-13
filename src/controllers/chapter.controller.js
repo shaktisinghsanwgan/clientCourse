@@ -35,7 +35,10 @@ export async function week(req, res) {
 }
 
 export async function progressByName(req, res) {
-  const result = await updateProgressByChapterNames(req.valid.body.userId, req.valid.body.chapters);
+  const result = await updateProgressByChapterNames({
+    userId: req.valid.body.userId,
+    kajabiUserId: req.valid.body.kajabiUserId,
+  }, req.valid.body.chapters);
   sendSuccess(res, 200, 'Chapter progress updated', result);
 }
 

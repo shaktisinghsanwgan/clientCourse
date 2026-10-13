@@ -10,12 +10,18 @@ const optionalUserId = z.preprocess(
   z.coerce.number().int().positive().optional(),
 );
 
+const optionalKajabiUserId = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().trim().min(1).max(255).optional(),
+);
+
 export const purchaserEmailQuerySchema = z.object({
   body: z.object({}).passthrough(),
   params: z.object({}).passthrough(),
   query: z.object({
     purchaserEmail,
     userId: optionalUserId,
+    kajabiUserId: optionalKajabiUserId,
   }).passthrough(),
 });
 

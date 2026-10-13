@@ -52,14 +52,24 @@ export const weekParamSchema = z.object({
   query: z.object({}).passthrough(),
 });
 
+const optionalProgressUserId = z.preprocess(
+  (value) => (value === undefined || value === null || value === '' ? undefined : value),
+  z.coerce.number().int().positive().optional(),
+);
+
 export const progressByNameSchema = z.object({
   body: z.object({
-    userId: z.coerce.number().int().positive(),
+    userId: optionalProgressUserId,
+    kajabiUserId: z.string().trim().min(1).max(255).optional(),
     chapters: z.array(z.object({
       chapterName: z.string().trim().min(1).max(255),
       completed: z.boolean().optional(),
+      weekNumber: z.coerce.number().int().positive().max(8).optional(),
+      chapterId: z.string().trim().min(1).max(100).optional(),
     }).strict()).min(1).max(50),
-  }).strict(),
+  }).strict().refine((value) => value.userId || value.kajabiUserId, {
+    message: 'User id is required',
+  }),
   params: z.object({}).passthrough(),
   query: z.object({}).passthrough(),
 });

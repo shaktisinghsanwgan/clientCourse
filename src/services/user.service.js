@@ -212,14 +212,72 @@ export async function getUserById(userId) {
 
 export async function verifyUserRole(userId) {
   const user = await getUserById(userId);
+  return rolePayload(user);
+}
+
+export async function getUserByKajabiId(kajabiUserId) {
+  const user = await prisma.user.findUnique({ where: { kajabiUserId } });
+  if (!user || user.status !== 'ACTIVE') {
+    throw new ApiError(404, 'User not found', 'IDENTITY_NOT_FOUND');
+  }
+  return user;
+}
+
+export async function verifyByKajabiUserId(kajabiUserId) {
+  return rolePayload(await getUserByKajabiId(kajabiUserId));
+}
+
+function rolePayload(user) {
   return {
     userId: Number(user.id),
     name: user.name,
     email: user.email,
     role: user.role,
+    kajabiUserId: user.kajabiUserId,
     kind: user.role === 'PRIMARY' ? 'purchaser' : 'partner',
     isPurchaser: user.role === 'PRIMARY',
     isPartner: user.role === 'PARTNER',
+  };
+}
+
+export async function bindKajabiIdentity(input) {
+  const email = normalizeEmail(input.email);
+  const name = input.name.trim();
+  const kajabiUserId = input.kajabiUserId.trim();
+
+  let existing = await prisma.user.findUnique({ where: { email } });
+  if (!existing) {
+    const invitation = await prisma.partner.findUnique({ where: { partnerEmail: email } });
+    if (invitation) {
+      await loginByEmail(email);
+    } else {
+      await registerPurchaser({ name, email });
+    }
+    existing = await prisma.user.findUnique({ where: { email } });
+  }
+  if (!existing || existing.status !== 'ACTIVE') {
+    throw new ApiError(404, 'User not found', 'IDENTITY_NOT_FOUND');
+  }
+
+  const owner = await prisma.user.findUnique({ where: { kajabiUserId } });
+  if (owner && owner.id !== existing.id) {
+    throw new ApiError(409, 'That Kajabi user is already linked to another account', 'IDENTITY_CONFLICT');
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: existing.id },
+    data: { name, kajabiUserId },
+  });
+  if (updated.role === 'PARTNER') {
+    await prisma.partner.updateMany({
+      where: { partnerUserId: updated.id },
+      data: { partnerName: name },
+    });
+  }
+
+  return {
+    ...(await authPayload(updated)),
+    ...rolePayload(updated),
   };
 }
 

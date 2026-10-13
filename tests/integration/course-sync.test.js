@@ -258,6 +258,45 @@ describe('partner course synchronization', () => {
     expect(unknown.body.message).toBe('User not found');
   });
 
+  it('recognizes a Kajabi cookie id and saves the lesson the member just completed', async () => {
+    const { john } = await setupActivePartnership();
+    const kajabiUserId = 'RS_ENC_v3_member_cookie';
+    const missing = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId });
+    expect(missing.status).toBe(404);
+
+    const bound = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ name: 'John Doe', email: 'john@example.com', kajabiUserId });
+    expect(bound.status).toBe(200);
+    expect(bound.body.data.userId).toBe(john.user.id);
+    expect(bound.body.data.isPurchaser).toBe(true);
+    expect(bound.body.data.user.kajabiUserId).toBe(kajabiUserId);
+
+    const found = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId });
+    expect(found.status).toBe(200);
+    expect(found.body.message).toBe('Purchaser');
+
+    const saved = await request(app).post('/api/v1/chapters/progress').send({
+      kajabiUserId,
+      chapters: [{
+        chapterName: 'Course Orientation Video',
+        weekNumber: 1,
+        chapterId: '2200999846',
+        completed: true,
+      }],
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.data.updates[0].weekNumber).toBe(1);
+    expect(saved.body.data.updates[0].user.completedChapters).toBe(1);
+
+    const course = await request(app).get('/api/v1/course/sync').query({ kajabiUserId });
+    expect(course.status).toBe(200);
+    expect(course.body.user.email).toBe('john@example.com');
+    const orientation = course.body.user.weeks[0].chapters.find((chapter) => chapter.chapterName === 'Course Orientation Video');
+    expect(orientation.completed).toBe(true);
+  });
+
   it('keeps Week 2 locked until both partners finish Week 1, including when the partner finishes first', async () => {
     const { john, jane } = await setupActivePartnership();
 

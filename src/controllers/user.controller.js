@@ -4,7 +4,9 @@ import {
   loginByEmail,
   registerPurchaser,
   syncAuthenticatedUser,
+  bindKajabiIdentity,
   updateUserAccount,
+  verifyByKajabiUserId,
   verifyUserRole,
 } from '../services/user.service.js';
 
@@ -25,6 +27,18 @@ export async function me(req, res) {
 export async function login(req, res) {
   const result = await loginByEmail(req.valid.body.email);
   sendSuccess(res, 200, 'Signed in', result);
+}
+
+export async function lookup(req, res) {
+  const result = await verifyByKajabiUserId(req.valid.query.kajabiUserId);
+  const message = result.isPurchaser ? 'Purchaser' : 'Partner';
+  sendSuccess(res, 200, message, result);
+}
+
+export async function bind(req, res) {
+  const result = await bindKajabiIdentity(req.valid.body);
+  const message = result.isPurchaser ? 'Purchaser linked' : 'Partner linked';
+  sendSuccess(res, 200, message, result);
 }
 
 export async function verify(req, res) {

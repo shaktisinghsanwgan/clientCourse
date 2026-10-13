@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ApiError } from '../utils/errors.js';
 import { getWeekProgress } from './progress.service.js';
-import { getUserById } from './user.service.js';
+import { getUserById, getUserByKajabiId } from './user.service.js';
 import {
   assertCourseAccess,
   assertWeekNumber,
@@ -174,21 +174,62 @@ export async function listWeekChapters(user, weekValue) {
   };
 }
 
-export async function updateProgressByChapterNames(userId, chapters) {
-  const user = await getUserById(userId);
+function chapterSlug(value) {
+  const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return slug || 'chapter';
+}
+
+async function resolveProgressChapter(item) {
+  const chapterName = item.chapterName.trim();
+  if (item.chapterId) {
+    const byId = await prisma.courseChapter.findUnique({ where: { chapterId: item.chapterId } });
+    if (byId) return byId;
+  }
+
+  if (item.weekNumber) {
+    const weekNumber = assertWeekNumber(item.weekNumber);
+    const byName = await prisma.courseChapter.findFirst({
+      where: { chapterName, weekNumber, isActive: true },
+    });
+    if (byName) return byName;
+
+    const rows = await prisma.courseChapter.findMany({
+      where: { weekNumber },
+      select: { chapterOrder: true },
+    });
+    const chapterOrder = rows.reduce((max, row) => Math.max(max, row.chapterOrder), 0) + 1;
+    const chapterId = String(item.chapterId || `week-${weekNumber}-${chapterSlug(chapterName)}`).slice(0, 100);
+    return prisma.courseChapter.create({
+      data: {
+        weekNumber,
+        chapterId,
+        chapterName,
+        chapterOrder,
+        isActive: true,
+      },
+    });
+  }
+
+  const matches = await prisma.courseChapter.findMany({
+    where: { chapterName, isActive: true },
+  });
+  if (matches.length === 0) {
+    throw new ApiError(404, `Chapter not found: ${chapterName}`, 'CHAPTER_NOT_FOUND');
+  }
+  if (matches.length > 1) {
+    throw new ApiError(409, `More than one chapter is named ${chapterName}`, 'CHAPTER_NOT_FOUND');
+  }
+  return matches[0];
+}
+
+export async function updateProgressByChapterNames(identity, chapters) {
+  const user = identity.kajabiUserId
+    ? await getUserByKajabiId(identity.kajabiUserId)
+    : await getUserById(identity.userId);
   const updates = [];
   for (const item of chapters) {
-    const chapterName = item.chapterName.trim();
-    const matches = await prisma.courseChapter.findMany({
-      where: { chapterName, isActive: true },
-    });
-    if (matches.length === 0) {
-      throw new ApiError(404, `Chapter not found: ${chapterName}`, 'CHAPTER_NOT_FOUND');
-    }
-    if (matches.length > 1) {
-      throw new ApiError(409, `More than one chapter is named ${chapterName}`, 'CHAPTER_NOT_FOUND');
-    }
-    updates.push(await completeChapter(user, matches[0].chapterId, item.completed !== false));
+    const chapter = await resolveProgressChapter(item);
+    updates.push(await completeChapter(user, chapter.chapterId, item.completed !== false));
   }
   return {
     userId: Number(user.id),

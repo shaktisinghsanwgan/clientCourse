@@ -40,7 +40,12 @@ export async function authenticate(req, res, next) {
 export function authenticateUnlessPurchaserEmail(req, res, next) {
   const email = req.query.purchaserEmail;
   const userId = req.query.userId;
-  if ((typeof email === 'string' && email.trim()) || (typeof userId === 'string' && userId.trim())) {
+  const kajabiUserId = req.query.kajabiUserId;
+  if (
+    (typeof email === 'string' && email.trim())
+    || (typeof userId === 'string' && userId.trim())
+    || (typeof kajabiUserId === 'string' && kajabiUserId.trim())
+  ) {
     return next();
   }
   return authenticate(req, res, next);

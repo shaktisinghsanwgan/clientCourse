@@ -44,6 +44,24 @@ export const updateUserSchema = z.object({
   query: z.object({}).passthrough(),
 });
 
+export const lookupSchema = z.object({
+  body: z.object({}).passthrough(),
+  params: z.object({}).passthrough(),
+  query: z.object({
+    kajabiUserId: z.string().trim().min(1).max(255),
+  }).passthrough(),
+});
+
+export const bindSchema = z.object({
+  body: z.object({
+    name: nameSchema,
+    email: emailSchema,
+    kajabiUserId: z.string().trim().min(1).max(255),
+  }).strict(),
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 export const loginSchema = z.object({
   body: z.object({
     email: emailSchema,
