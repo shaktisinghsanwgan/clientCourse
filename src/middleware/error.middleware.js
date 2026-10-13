@@ -41,9 +41,17 @@ export function errorHandler(error, req, res, next) {
   const prismaCode = typeof error?.code === 'string' ? error.code : '';
   const lines = String(error?.message || '').split('\n').map((line) => line.trim()).filter(Boolean);
   const detail = lines.find((line) => /default value|denied|does not exist|Unknown column|Data too long|cannot be null|foreign key|Can't reach database/i.test(line));
+  const raw = lines.join(' ');
+  const safeLine = raw
+    && raw.length <= 180
+    && !/mysql:\/\//i.test(raw)
+    && !/prisma/i.test(raw)
+    && !/secret|password|token/i.test(raw)
+    ? raw
+    : '';
   res.status(500).json({
     success: false,
-    message: detail || (prismaCode ? `Database request failed (${prismaCode})` : 'Database request failed'),
+    message: detail || safeLine || (prismaCode ? `Database request failed (${prismaCode})` : 'Database request failed'),
     errorCode: prismaCode || 'DATABASE_TRANSACTION_FAILED',
   });
 }

@@ -21,15 +21,8 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet());
 
-const allowedOrigins = env.FRONTEND_URL.split(',').map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-    callback(new Error('Origin not allowed'));
-  },
+  origin: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
 }));
