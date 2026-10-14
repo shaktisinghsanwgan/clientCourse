@@ -54,7 +54,7 @@ export const lookupSchema = z.object({
 
 export const bindSchema = z.object({
   body: z.object({
-    name: nameSchema,
+    name: nameSchema.optional(),
     email: emailSchema,
     kajabiUserId: z.string().trim().min(1).max(255),
   }).strict(),

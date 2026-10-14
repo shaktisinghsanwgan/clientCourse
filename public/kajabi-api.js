@@ -139,12 +139,23 @@ var CourseApi = (function () {
       + '#course-sync-modal ul{margin:0 0 16px;padding-left:18px;}'
       + '#course-sync-modal label{display:block;margin:12px 0 6px;font-size:14px;}'
       + '#course-sync-modal input{width:100%;box-sizing:border-box;border:1px solid #d9cfc6;border-radius:8px;padding:12px;font-size:16px;}'
-      + '#course-sync-modal button{margin-top:16px;border:0;border-radius:999px;background:#7a3048;color:#fff;padding:12px 18px;font-size:16px;cursor:pointer;}';
+      + '#course-sync-modal button{margin-top:16px;border:0;border-radius:999px;background:#7a3048;color:#fff;padding:12px 18px;font-size:16px;cursor:pointer;}'
+      + '#course-sync-modal .course-sync-note{margin:0 0 12px;color:#7a3048;line-height:1.4;}'
+      + '#course-sync-modal.is-locked{cursor:default;}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
     modal.id = 'course-sync-modal';
     modal.innerHTML = '<div class="course-sync-card"><h2></h2><p></p><div class="course-sync-body"></div><button type="button">Close</button></div>';
     document.body.appendChild(modal);
+    modal.addEventListener('click', function (event) {
+      if (modal.classList.contains('is-locked')) event.stopPropagation();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && modal.classList.contains('is-locked')) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
     return modal;
   }
 
@@ -168,44 +179,47 @@ var CourseApi = (function () {
     button.onclick = function () {
       modal.classList.remove('is-open');
     };
+    modal.classList.remove('is-locked');
     modal.classList.add('is-open');
     return body;
   }
 
-  function showProfileModal() {
-    var member = memberFromPage();
-    var body = showModal(
-      'Confirm your account',
-      'We could not match this login yet. Check your name and email, then save. Next time we will recognize you and keep your progress.',
-    );
-    body.innerHTML = ''
-      + '<label for="course-sync-name">Full Name</label><input id="course-sync-name">'
-      + '<label for="course-sync-email">E-mail</label><input id="course-sync-email" type="email">';
-    body.querySelector('#course-sync-name').value = member.name;
-    body.querySelector('#course-sync-email').value = member.email;
-    var button = document.querySelector('#course-sync-modal button');
-    button.textContent = 'Save';
+  function showEmailModal() {
+    var modal = ensureModal();
+    if (modal.classList.contains('is-locked')) return;
+    modal.classList.add('is-open', 'is-locked');
+    modal.querySelector('h2').textContent = 'Save your progress on this login';
+    modal.querySelector('p').textContent = 'Enter the email you use to sign in. Your lessons stay on that account, and you only do this once.';
+    var body = modal.querySelector('.course-sync-body');
+    body.innerHTML = '<p class="course-sync-note" hidden></p><label for="course-sync-email">Email</label><input id="course-sync-email" type="email" autocomplete="email">';
+    var note = body.querySelector('.course-sync-note');
+    var input = body.querySelector('#course-sync-email');
+    var button = modal.querySelector('button');
+    button.textContent = 'Continue';
+    button.disabled = false;
     button.onclick = function () {
-      var name = body.querySelector('#course-sync-name').value.trim() || fieldValue('#member_name');
-      var email = body.querySelector('#course-sync-email').value.trim() || fieldValue('#member_email');
-      if (!name || !email) {
-        showModal('Name and email are required', 'Fill Full Name and E-mail on this page, then save again.');
+      var email = input.value.trim();
+      if (!email) {
+        note.hidden = false;
+        note.textContent = 'Enter the email you use to sign in.';
         return;
       }
-      if (!kajabiUserId) {
-        showModal('Login was not found', 'The rl_user_id cookie is missing, so this browser cannot be linked yet.');
-        return;
-      }
-      CourseApi.bindAccount({ name: name, email: email, kajabiUserId: kajabiUserId }).then(function (result) {
+      button.disabled = true;
+      CourseApi.bindAccount({ email: email, kajabiUserId: kajabiUserId }).then(function (result) {
         savePurchaser(result);
-        sessionStorage.removeItem(PROFILE_FLAG);
-        showModal('You are saved', 'This login is now linked. You can go back to the course.');
-        document.querySelector('#course-sync-modal button').textContent = 'Close';
-        document.querySelector('#course-sync-modal button').onclick = function () {
-          document.getElementById('course-sync-modal').classList.remove('is-open');
-        };
+        localStorage.setItem('courseSync.linkedId', kajabiUserId);
+        modal.classList.remove('is-open', 'is-locked');
+        handleKnownUser();
       }).catch(function (error) {
-        showModal('Could not save your account', error.message);
+        button.disabled = false;
+        note.hidden = false;
+        if (error.status === 404) {
+          note.textContent = 'We could not find that email. Enter the same email you use to log in.';
+        } else if (error.status === 409) {
+          note.textContent = 'That email is already connected to a login. Enter the email for this sign-in.';
+        } else {
+          note.textContent = error.message;
+        }
       });
     };
   }
@@ -254,12 +268,8 @@ var CourseApi = (function () {
   }
 
   function handleMissingUser() {
-    sessionStorage.setItem(PROFILE_FLAG, '1');
-    if (isSettingsPage()) {
-      showProfileModal();
-      return;
-    }
-    window.location.href = '/settings/account';
+    if (localStorage.getItem('courseSync.linkedId') === kajabiUserId) return;
+    showEmailModal();
   }
 
   function watchLesson() {
@@ -336,7 +346,7 @@ var CourseApi = (function () {
     if (!kajabiUserId) return;
     CourseApi.lookup(kajabiUserId).then(function (result) {
       savePurchaser(result);
-      sessionStorage.removeItem(PROFILE_FLAG);
+      localStorage.setItem('courseSync.linkedId', kajabiUserId);
       handleKnownUser();
     }).catch(function (error) {
       if (error.status === 404) {

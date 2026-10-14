@@ -242,33 +242,40 @@ function rolePayload(user) {
 
 export async function bindKajabiIdentity(input) {
   const email = normalizeEmail(input.email);
-  const name = input.name.trim();
+  const name = input.name ? input.name.trim() : '';
   const kajabiUserId = input.kajabiUserId.trim();
 
   let existing = await prisma.user.findUnique({ where: { email } });
   if (!existing) {
     const invitation = await prisma.partner.findUnique({ where: { partnerEmail: email } });
-    if (invitation) {
-      await loginByEmail(email);
-    } else {
-      await registerPurchaser({ name, email });
+    if (!invitation) {
+      throw new ApiError(404, 'Enter the email you use to sign in. We could not find that email.', 'EMAIL_NOT_FOUND');
     }
+    await loginByEmail(email);
     existing = await prisma.user.findUnique({ where: { email } });
   }
   if (!existing || existing.status !== 'ACTIVE') {
-    throw new ApiError(404, 'User not found', 'IDENTITY_NOT_FOUND');
+    throw new ApiError(404, 'Enter the email you use to sign in. We could not find that email.', 'EMAIL_NOT_FOUND');
+  }
+  if (existing.kajabiUserId && existing.kajabiUserId !== kajabiUserId) {
+    throw new ApiError(409, 'This email is already linked to a login.', 'EMAIL_ALREADY_LINKED');
   }
 
   const owner = await prisma.user.findUnique({ where: { kajabiUserId } });
   if (owner && owner.id !== existing.id) {
-    throw new ApiError(409, 'That Kajabi user is already linked to another account', 'IDENTITY_CONFLICT');
+    throw new ApiError(409, 'This login is already linked to another email.', 'IDENTITY_CONFLICT');
   }
 
-  const updated = await prisma.user.update({
-    where: { id: existing.id },
-    data: { name, kajabiUserId },
-  });
-  if (updated.role === 'PARTNER') {
+  const updated = existing.kajabiUserId === kajabiUserId
+    ? existing
+    : await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        kajabiUserId,
+        ...(name ? { name } : {}),
+      },
+    });
+  if (name && updated.role === 'PARTNER') {
     await prisma.partner.updateMany({
       where: { partnerUserId: updated.id },
       data: { partnerName: name },

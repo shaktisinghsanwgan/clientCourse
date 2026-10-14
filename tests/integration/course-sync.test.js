@@ -264,14 +264,32 @@ describe('partner course synchronization', () => {
     const missing = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId });
     expect(missing.status).toBe(404);
 
+    await prisma.user.update({
+      where: { email: 'john@example.com' },
+      data: { kajabiUserId: null },
+    });
+    const unknownEmail = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'missing@example.com', kajabiUserId });
+    expect(unknownEmail.status).toBe(404);
+    expect(unknownEmail.body.errorCode).toBe('EMAIL_NOT_FOUND');
+
     const bound = await request(app)
       .post('/api/v1/users/bind')
       .set('x-api-key', process.env.ADMIN_API_KEY)
-      .send({ name: 'John Doe', email: 'john@example.com', kajabiUserId });
+      .send({ email: 'john@example.com', kajabiUserId });
     expect(bound.status).toBe(200);
     expect(bound.body.data.userId).toBe(john.user.id);
     expect(bound.body.data.isPurchaser).toBe(true);
     expect(bound.body.data.user.kajabiUserId).toBe(kajabiUserId);
+
+    const again = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'john@example.com', kajabiUserId: 'RS_ENC_v3_other_cookie' });
+    expect(again.status).toBe(409);
+    expect(again.body.errorCode).toBe('EMAIL_ALREADY_LINKED');
 
     const found = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId });
     expect(found.status).toBe(200);
