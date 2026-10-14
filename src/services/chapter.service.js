@@ -293,17 +293,23 @@ export async function completeChapter(user, chapterId, completed) {
     const partnerSummary = summarizeActiveChapters(weekChapters, progressForUser(refreshed.progress, partnerId));
     const nextUnlocked = chapter.weekNumber < TOTAL_WEEKS && userSummary.completed && partnerSummary.completed;
     const partnerRecord = partnership.primaryUserId === user.id ? partnerUser : primaryUser;
+    const otherRole = user.role === 'PRIMARY' ? 'partner' : 'purchaser';
 
     return {
       weekNumber: chapter.weekNumber,
+      otherRole,
       user: {
         id: Number(user.id),
         name: user.name,
+        email: user.email,
+        role: user.role === 'PRIMARY' ? 'purchaser' : 'partner',
         ...publicSummary(userSummary),
       },
       partner: {
         id: Number(partnerRecord.id),
         name: partnerRecord.name,
+        email: partnerRecord.email,
+        role: otherRole,
         ...publicSummary(partnerSummary),
       },
       partnership: {
@@ -315,6 +321,7 @@ export async function completeChapter(user, chapterId, completed) {
           userSummary,
           partnerSummary,
           nextUnlocked,
+          otherLabel: otherRole,
         }),
       },
     };

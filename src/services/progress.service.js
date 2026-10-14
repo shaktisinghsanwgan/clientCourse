@@ -140,6 +140,8 @@ export async function buildCourseSync(user) {
       bothCompletedCurrentWeek,
       nextWeekUnlocked,
       nextAvailableWeek: nextWeekUnlocked ? currentWeek + 1 : null,
+      viewerRole: viewerIsPrimary ? 'purchaser' : 'partner',
+      otherRole: viewerIsPrimary ? 'partner' : 'purchaser',
       message: syncMessage({
         partnership,
         primaryUser: primaryUser || user,
@@ -148,6 +150,7 @@ export async function buildCourseSync(user) {
         currentWeek: currentWeek || 1,
         userCompleted: Boolean(currentWeek && viewerFlags[currentWeek]),
         partnerCompleted: Boolean(currentWeek && (viewerIsPrimary ? partnerFlags[currentWeek] : primaryFlags[currentWeek])),
+        otherLabel: viewerIsPrimary ? 'partner' : 'purchaser',
       }),
     },
   };

@@ -281,6 +281,7 @@ export function syncMessage({
   currentWeek,
   userCompleted,
   partnerCompleted,
+  otherLabel = 'partner',
 }) {
   if (!partnership) {
     return 'No partner found.';
@@ -292,10 +293,10 @@ export function syncMessage({
     return 'Both partners completed the course.';
   }
   if (userCompleted && !partnerCompleted) {
-    return `Waiting for partner to complete Week ${currentWeek}.`;
+    return `Waiting for your ${otherLabel} to complete Week ${currentWeek}.`;
   }
   if (!userCompleted && partnerCompleted) {
-    return `Your partner is waiting for you to complete Week ${currentWeek}.`;
+    return `Your ${otherLabel} is waiting for you to complete Week ${currentWeek}.`;
   }
   if (userCompleted && partnerCompleted && currentWeek < TOTAL_WEEKS) {
     return `Both partners completed Week ${currentWeek}. Week ${currentWeek + 1} is now unlocked.`;
@@ -303,7 +304,7 @@ export function syncMessage({
   return `Waiting for both partners to complete Week ${currentWeek}.`;
 }
 
-export function weekActionMessage({ weekNumber, userSummary, partnerSummary, nextUnlocked }) {
+export function weekActionMessage({ weekNumber, userSummary, partnerSummary, nextUnlocked, otherLabel = 'partner' }) {
   if (userSummary.totalChapters === 0) {
     return 'No active chapters are configured for this week.';
   }
@@ -315,11 +316,11 @@ export function weekActionMessage({ weekNumber, userSummary, partnerSummary, nex
   }
   if (userSummary.completed && !partnerSummary.completed) {
     const remaining = partnerSummary.remainingChapters;
-    return `Waiting for partner to complete ${remaining} remaining chapter${remaining === 1 ? '' : 's'}.`;
+    return `Waiting for your ${otherLabel} to complete ${remaining} remaining chapter${remaining === 1 ? '' : 's'}.`;
   }
   if (!userSummary.completed && partnerSummary.completed) {
     const remaining = userSummary.remainingChapters;
-    return `Your partner is waiting for you to complete ${remaining} remaining chapter${remaining === 1 ? '' : 's'}.`;
+    return `Your ${otherLabel} is waiting for you to complete ${remaining} remaining chapter${remaining === 1 ? '' : 's'}.`;
   }
   return `Waiting for both partners to complete Week ${weekNumber}.`;
 }

@@ -315,6 +315,75 @@ describe('partner course synchronization', () => {
     expect(orientation.completed).toBe(true);
   });
 
+  it('links purchaser and partner logins separately and syncs week status both ways', async () => {
+    const { john, jane } = await setupActivePartnership();
+    await prisma.user.update({ where: { email: 'john@example.com' }, data: { kajabiUserId: null } });
+    await prisma.user.update({ where: { email: 'jane@example.com' }, data: { kajabiUserId: null } });
+
+    const purchaserCookie = 'RS_ENC_v3_purchaser';
+    const partnerCookie = 'RS_ENC_v3_partner';
+
+    const bindJohn = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'john@example.com', kajabiUserId: purchaserCookie });
+    expect(bindJohn.status).toBe(200);
+    expect(bindJohn.body.data.userId).toBe(john.user.id);
+    expect(bindJohn.body.data.isPurchaser).toBe(true);
+
+    const bindJane = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'jane@example.com', kajabiUserId: partnerCookie });
+    expect(bindJane.status).toBe(200);
+    expect(bindJane.body.data.userId).toBe(jane.user.id);
+    expect(bindJane.body.data.isPartner).toBe(true);
+
+    const reusedEmail = await request(app)
+      .post('/api/v1/users/bind')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'jane@example.com', kajabiUserId: 'RS_ENC_v3_second_partner' });
+    expect(reusedEmail.status).toBe(409);
+    expect(reusedEmail.body.errorCode).toBe('EMAIL_ALREADY_LINKED');
+
+    const purchaserProgress = await request(app).post('/api/v1/chapters/progress').send({
+      kajabiUserId: purchaserCookie,
+      chapters: [{ chapterName: 'Week 1 Chapter 1', completed: true }],
+    });
+    expect(purchaserProgress.status).toBe(200);
+    expect(purchaserProgress.body.data.updates[0].otherRole).toBe('partner');
+    expect(purchaserProgress.body.data.updates[0].user.completedChapters).toBe(1);
+    expect(purchaserProgress.body.data.updates[0].partner.completedChapters).toBe(0);
+    expect(purchaserProgress.body.data.updates[0].partner.email).toBe('jane@example.com');
+
+    const asPartner = await request(app).get('/api/v1/course/sync').query({ kajabiUserId: partnerCookie });
+    expect(asPartner.status).toBe(200);
+    expect(asPartner.body.user.email).toBe('jane@example.com');
+    expect(asPartner.body.partner.email).toBe('john@example.com');
+    expect(asPartner.body.synchronization.viewerRole).toBe('partner');
+    expect(asPartner.body.synchronization.otherRole).toBe('purchaser');
+    expect(asPartner.body.user.weeks[0].completedChapters).toBe(0);
+    expect(asPartner.body.partner.weeks[0].completedChapters).toBe(1);
+
+    const partnerProgress = await request(app).post('/api/v1/chapters/progress').send({
+      kajabiUserId: partnerCookie,
+      chapters: [{ chapterName: 'Week 1 Chapter 1', completed: true }],
+    });
+    expect(partnerProgress.status).toBe(200);
+    expect(partnerProgress.body.data.updates[0].otherRole).toBe('purchaser');
+    expect(partnerProgress.body.data.updates[0].user.email).toBe('jane@example.com');
+    expect(partnerProgress.body.data.updates[0].user.completedChapters).toBe(1);
+    expect(partnerProgress.body.data.updates[0].partner.email).toBe('john@example.com');
+    expect(partnerProgress.body.data.updates[0].partner.completedChapters).toBe(1);
+
+    const asPurchaser = await request(app).get('/api/v1/course/sync').query({ kajabiUserId: purchaserCookie });
+    expect(asPurchaser.body.user.email).toBe('john@example.com');
+    expect(asPurchaser.body.partner.email).toBe('jane@example.com');
+    expect(asPurchaser.body.synchronization.otherRole).toBe('partner');
+    expect(asPurchaser.body.user.weeks[0].completedChapters).toBe(1);
+    expect(asPurchaser.body.partner.weeks[0].completedChapters).toBe(1);
+  });
+
   it('keeps Week 2 locked until both partners finish Week 1, including when the partner finishes first', async () => {
     const { john, jane } = await setupActivePartnership();
 

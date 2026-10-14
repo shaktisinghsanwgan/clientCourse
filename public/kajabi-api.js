@@ -126,6 +126,20 @@ var CourseApi = (function () {
     });
   }
 
+  function chapterLines(week) {
+    if (!week || !week.chapters) return [];
+    return week.chapters.map(function (chapter) {
+      return chapter.chapterName + (chapter.completed ? ' — done' : ' — not done');
+    });
+  }
+
+  function otherRole(course) {
+    if (course && course.synchronization && course.synchronization.otherRole) return course.synchronization.otherRole;
+    if (course && course.otherRole) return course.otherRole;
+    var saved = savedPurchaser();
+    return saved && saved.role === 'PARTNER' ? 'purchaser' : 'partner';
+  }
+
   function ensureModal() {
     var existing = document.getElementById('course-sync-modal');
     if (existing) return existing;
@@ -301,15 +315,19 @@ var CourseApi = (function () {
       }],
     }).then(function (result) {
       var update = result.data && result.data.updates ? result.data.updates[result.data.updates.length - 1] : null;
-      if (!update || !update.user || !update.user.completed || (update.partner && update.partner.completed)) return;
+      if (!update || !update.user || !update.user.completed) return;
       return CourseApi.getCourse(kajabiUserId).then(function (course) {
         var week = findWeek(course.partner, update.weekNumber);
+        var label = otherRole(course);
+        var waiting = !(update.partner && update.partner.completed);
         showModal(
-          'Wait for your partner to complete',
+          waiting ? 'Wait for your ' + label + ' to complete' : 'You both finished this week',
           update.partnership && update.partnership.message
             ? update.partnership.message
-            : 'Your partner still has lessons left in this week.',
-          incompleteNames(week),
+            : (waiting
+              ? 'Your ' + label + ' still has lessons left in this week.'
+              : 'Your ' + label + ' has finished this week too.'),
+          chapterLines(week),
         );
       });
     }).catch(function (error) {
@@ -322,16 +340,26 @@ var CourseApi = (function () {
     event.stopPropagation();
     var lesson = readLesson();
     CourseApi.getCourse(kajabiUserId).then(function (course) {
-      var week = findWeek(course.user, lesson.weekNumber);
-      if (week && week.completed && control.href) {
-        window.location.href = control.href;
+      var mine = findWeek(course.user, lesson.weekNumber);
+      var theirs = findWeek(course.partner, lesson.weekNumber);
+      var label = otherRole(course);
+      if (!mine || !mine.completed) {
+        showModal(
+          'Complete your module first',
+          'Finish every lesson in this week before you open the next module.',
+          incompleteNames(mine),
+        );
         return;
       }
-      showModal(
-        'Complete your module first',
-        'Finish every lesson in this week before you open the next module.',
-        incompleteNames(week),
-      );
+      if (!course.synchronization || !course.synchronization.partnershipActive || !theirs || !theirs.completed) {
+        showModal(
+          'Wait for your ' + label + ' to complete',
+          'Your ' + label + ' still has lessons left in this week.',
+          chapterLines(theirs),
+        );
+        return;
+      }
+      if (control.href) window.location.href = control.href;
     }).catch(function (error) {
       showModal('Could not check this module', error.message);
     });
