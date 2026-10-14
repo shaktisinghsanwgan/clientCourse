@@ -360,6 +360,22 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-status.is-open{background:#fde8ee;color:#d15b78;}'
       + '#course-sync-modal .course-sync-status.is-done{background:#e8f7ee;color:#1f8a4c;}'
       + '#course-sync-modal .course-sync-card-partner .course-sync-close{margin:18px 0 0 auto;display:block;min-width:108px;padding:10px 22px;background:#7a3048;}'
+      + '#course-sync-modal .course-sync-card-email .course-sync-hero{display:flex;flex-direction:column;}'
+      + '#course-sync-modal .course-sync-card-email .course-sync-together{margin-top:auto;}'
+      + '#course-sync-modal .course-sync-card-email .course-sync-panel{padding:28px 28px 22px 24px;overflow:auto;}'
+      + '#course-sync-modal .course-sync-reasons{list-style:none;margin:16px 0 8px;padding:0;display:flex;flex-direction:column;gap:12px;}'
+      + '#course-sync-modal .course-sync-reasons li{display:flex;gap:12px;align-items:flex-start;margin:0;padding:0;}'
+      + '#course-sync-modal .course-sync-reason-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-reasons strong{display:block;margin:0 0 2px;font-size:14px;color:#2a2326;}'
+      + '#course-sync-modal .course-sync-reasons span{display:block;margin:0;color:#6f6562;font-size:13px;line-height:1.4;}'
+      + '#course-sync-modal .course-sync-req{color:#d15b78;}'
+      + '#course-sync-modal .course-sync-field{position:relative;}'
+      + '#course-sync-modal .course-sync-field svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#8d8380;pointer-events:none;}'
+      + '#course-sync-modal .course-sync-field input{padding-left:40px;border:1px solid #e4d9d4;border-radius:10px;}'
+      + '#course-sync-modal .course-sync-card-email .course-sync-continue{width:100%;margin-top:14px;border-radius:12px;padding:12px 18px;font-weight:650;}'
+      + '#course-sync-modal .course-sync-warn{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:#fdecef;color:#6f6562;font-size:13px;line-height:1.4;}'
+      + '#course-sync-modal .course-sync-warn svg{flex:none;margin-top:1px;color:#d15b78;}'
+      + '#course-sync-modal .course-sync-warn strong{display:block;margin:0 0 4px;color:#2a2326;font-weight:650;}'
       + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
@@ -659,29 +675,34 @@ var CourseApi = (function () {
   function showEmailModal() {
     var modal = ensureModal();
     if (modal.classList.contains('is-locked') && modal.classList.contains('is-open')) return;
-    resetCard(modal);
-    modal.classList.add('is-locked');
-    revealModal(modal);
-    modal.querySelector('h2').textContent = 'Save Your Course Progress';
-    modal.querySelector('p').textContent = 'Enter the email address you use to access this course so we can securely link your learning account.';
-    var body = modal.querySelector('.course-sync-body');
-    body.innerHTML = ''
-      + '<p class="course-sync-why">Why is this important?</p>'
-      + '<ul>'
-      + '<li><strong>Save Your Progress:</strong> Keep your course progress linked to your email address.</li>'
-      + '<li><strong>Sync With Your Partner:</strong> Connect your account with your partner\'s account so both learning journeys stay synchronized.</li>'
-      + '<li><strong>Unlock Course Weeks Together:</strong> Course content will automatically become available as you and your partner complete the required lessons.</li>'
+    var card = resetCard(modal);
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-email';
+    card.innerHTML = ''
+      + '<div class="course-sync-split">'
+      + '<div class="course-sync-hero">'
+      + '<img class="course-sync-art" alt="" src="' + imageUrl('course-email.png') + '" />'
+      + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><div><strong>Your progress is safe</strong><span>We\'ll securely link your learning account to this email address.</span></div></div>'
+      + '</div>'
+      + '<div class="course-sync-panel">'
+      + '<h2>Save Your Course Progress</h2>'
+      + '<p class="course-sync-lead">Enter the email address you use to access this course so we can securely link your learning account.</p>'
+      + '<ul class="course-sync-reasons">'
+      + '<li><span class="course-sync-reason-icon" style="background:#fdecef;color:#c45c78"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16"/><path d="M7 16v-4M12 16V8M17 16v-6"/></svg></span><div><strong>Save Your Progress</strong><span>Keep your course progress linked to your email address.</span></div></li>'
+      + '<li><span class="course-sync-reason-icon" style="background:#efe7ff;color:#7c3aed"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19c.8-3 2.8-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><path d="M14.5 14.6c1.4-.3 2.7 0 3.8 1 1 1.1 1.5 2.3 1.7 3.4"/></svg></span><div><strong>Sync With Your Partner</strong><span>Connect your account with your partner\'s account so both learning journeys stay synchronized.</span></div></li>'
+      + '<li><span class="course-sync-reason-icon" style="background:#e7f8ef;color:#2f9d62"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>Unlock Course Weeks Together</strong><span>Course content will automatically become available as you and your partner complete the required lessons.</span></div></li>'
       + '</ul>'
       + '<p class="course-sync-note" hidden></p>'
-      + '<label for="course-sync-email">Email Address</label>'
-      + '<input id="course-sync-email" type="email" autocomplete="email" placeholder="Enter your registered email address">';
-    var footnote = modal.querySelector('.course-sync-footnote');
-    footnote.hidden = false;
-    footnote.innerHTML = 'You\'ll only need to do this once. Please use the same email address you use for your course account.'
-      + '<strong>Use the email address associated with your Kajabi course account. Using a different email may prevent your progress from syncing correctly.</strong>';
-    var note = body.querySelector('.course-sync-note');
-    var input = body.querySelector('#course-sync-email');
-    var button = modal.querySelector('button');
+      + '<label for="course-sync-email">Email Address <span class="course-sync-req">*</span></label>'
+      + '<div class="course-sync-field"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/></svg>'
+      + '<input id="course-sync-email" type="email" autocomplete="email" placeholder="Enter your registered email address"></div>'
+      + '<button type="button" class="course-sync-continue">Continue &#8594;</button>'
+      + '<div class="course-sync-warn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div><strong>You\'ll only need to do this once. Please use the same email address you use for your course account.</strong><span>Use the email address associated with your Kajabi course account. Using a different email may prevent your progress from syncing correctly.</span></div></div>'
+      + '</div></div>';
+    modal.classList.add('is-locked');
+    revealModal(modal);
+    var note = card.querySelector('.course-sync-note');
+    var input = card.querySelector('#course-sync-email');
+    var button = card.querySelector('button');
     function showEmailError(message) {
       note.hidden = false;
       note.textContent = message;
@@ -691,7 +712,6 @@ var CourseApi = (function () {
       input.classList.remove('course-sync-input-error');
       note.hidden = true;
     });
-    button.textContent = 'Continue';
     button.disabled = false;
     button.onclick = function () {
       var email = input.value.trim();
