@@ -330,7 +330,37 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-why{margin:0 0 6px;font-weight:700;}'
       + '#course-sync-modal .course-sync-footnote{margin:10px 0 0;font-size:13px;line-height:1.35;color:#5c514a;}'
       + '#course-sync-modal .course-sync-footnote strong{display:block;margin-top:8px;font-weight:600;}'
-      + '#course-sync-modal.is-locked{cursor:default;}';
+      + '#course-sync-modal.is-locked{cursor:default;}'
+      + '#course-sync-modal .course-sync-card-partner{position:relative;width:min(920px,100%);max-height:calc(100vh - 32px);overflow:hidden;padding:0;background:#fff;color:#241c22;border-radius:22px;font-family:"Segoe UI",system-ui,sans-serif;box-shadow:0 24px 70px rgba(40,20,28,.22);}'
+      + '#course-sync-modal .course-sync-x{position:absolute;top:12px;right:14px;z-index:2;margin:0;width:32px;height:32px;padding:0;border-radius:8px;background:transparent;color:#8d8380;font-size:22px;line-height:32px;}'
+      + '#course-sync-modal .course-sync-split{display:grid;grid-template-columns:minmax(280px,42%) minmax(0,1fr);min-height:460px;}'
+      + '#course-sync-modal .course-sync-hero{padding:28px 28px 24px;background:#fffaf8;}'
+      + '#course-sync-modal .course-sync-art{display:flex;justify-content:center;margin:8px 0 18px;}'
+      + '#course-sync-modal img.course-sync-art{display:block;width:min(340px,100%);height:auto;margin:8px auto 18px;object-fit:contain;}'
+      + '#course-sync-modal .course-sync-card-partner h2{margin:0 0 10px;font-size:32px;line-height:1.15;font-weight:750;letter-spacing:-.03em;color:#1d1a1c;}'
+      + '#course-sync-modal .course-sync-card-partner .course-sync-lead{margin:0;color:#6f6562;font-size:15px;line-height:1.45;}'
+      + '#course-sync-modal .course-sync-together{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px 16px;border-radius:16px;background:#fdecef;}'
+      + '#course-sync-modal .course-sync-together strong{display:block;margin-bottom:2px;color:#2a2326;font-size:14px;}'
+      + '#course-sync-modal .course-sync-together span{color:#6f6562;font-size:13px;line-height:1.4;}'
+      + '#course-sync-modal .course-sync-people{width:34px;height:34px;border-radius:10px;background:#f8d5df;color:#c45c78;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-panel{padding:54px 28px 20px 24px;display:flex;flex-direction:column;min-width:0;}'
+      + '#course-sync-modal .course-sync-panel-head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin:0 0 16px;padding:0 8px 0 0;}'
+      + '#course-sync-modal .course-sync-panel h3{margin:0 0 4px;font-size:18px;line-height:1.25;color:#1d1a1c;}'
+      + '#course-sync-modal .course-sync-panel-head p{margin:0;color:#6f6562;font-size:13px;line-height:1.4;}'
+      + '#course-sync-modal .course-sync-ring{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(#7a3048 calc(var(--p) * 1%), #f6e6ec 0);}'
+      + '#course-sync-modal .course-sync-ring.is-complete{background:conic-gradient(#2f9d62 calc(var(--p) * 1%), #e7f6ee 0);}'
+      + '#course-sync-modal .course-sync-ring span{width:60px;height:60px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;}'
+      + '#course-sync-modal .course-sync-ring b{font-size:14px;color:#2b2326;}'
+      + '#course-sync-modal .course-sync-ring small{margin-top:2px;font-size:9px;font-weight:600;color:#8d8380;}'
+      + '#course-sync-modal .course-sync-lessons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;overflow:auto;}'
+      + '#course-sync-modal .course-sync-lessons li{display:flex;align-items:center;gap:10px;margin:0;padding:8px 10px;border:1px solid #f0e7ea;border-radius:12px;background:#fff;}'
+      + '#course-sync-modal .course-sync-lesson-icon{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-lesson-name{flex:1;min-width:0;font-size:14px;font-weight:650;color:#2a2426;}'
+      + '#course-sync-modal .course-sync-status{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:650;white-space:nowrap;}'
+      + '#course-sync-modal .course-sync-status.is-open{background:#fde8ee;color:#d15b78;}'
+      + '#course-sync-modal .course-sync-status.is-done{background:#e8f7ee;color:#1f8a4c;}'
+      + '#course-sync-modal .course-sync-card-partner .course-sync-close{margin:18px 0 0 auto;display:block;min-width:108px;padding:10px 22px;background:#7a3048;}'
+      + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
     modal.id = 'course-sync-modal';
@@ -349,8 +379,234 @@ var CourseApi = (function () {
     return modal;
   }
 
+  function resetCard(modal) {
+    var card = modal.querySelector('.course-sync-card');
+    var markup = '<h2></h2><p></p><div class="course-sync-body"></div><button type="button">Close</button><p class="course-sync-footnote" hidden></p>';
+    if (!card) {
+      modal.innerHTML = '<div class="course-sync-card">' + markup + '</div>';
+      return modal.querySelector('.course-sync-card');
+    }
+    if (card.classList.contains('course-sync-card-partner')) {
+      card.className = 'course-sync-card';
+      card.innerHTML = markup;
+    }
+    return card;
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (char) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+    });
+  }
+
+  function lessonIcon(index) {
+    var tones = ['#f3e8ff|#7c3aed', '#e7f0ff|#3b6fd8', '#fde8ee|#e25b7a', '#e7f8ef|#2f9d62', '#fff4e5|#e39a2e', '#efe7ff|#7c3aed'];
+    var tone = tones[index % tones.length].split('|');
+    var glyphs = [
+      '<path d="M9 7.5v9l8-4.5z" fill="currentColor" stroke="none"/>',
+      '<path d="M8 6.5h5.5L17 10v8H8z"/><path d="M13.5 6.5V10H17"/>',
+      '<rect x="7.5" y="8" width="9" height="6" rx="1.2"/><path d="M10 16.5h4"/>',
+      '<path d="M8 6.5h8v11H8z"/><path d="M10 10h4M10 13h3"/>',
+      '<path d="M8 5.5h8v13H8z"/><path d="M10 9h4M10 12h4"/>',
+      '<path d="M8 12.5l2.4 2.4 5.6-6"/>'
+    ];
+    return '<span class="course-sync-lesson-icon" style="background:' + tone[0] + ';color:' + tone[1] + '"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">' + glyphs[index % glyphs.length] + '</svg></span>';
+  }
+
+  function partnerArt() {
+    return '<svg class="course-sync-art" width="230" height="112" viewBox="0 0 230 112" aria-hidden="true">'
+      + '<ellipse cx="58" cy="96" rx="46" ry="10" fill="#f6e4ea"/>'
+      + '<ellipse cx="172" cy="96" rx="46" ry="10" fill="#f6e4ea"/>'
+      + '<path d="M86 58c8-16 28-16 36 0" fill="none" stroke="#f3c3d0" stroke-width="2" stroke-dasharray="3 4"/>'
+      + '<circle cx="104" cy="42" r="16" fill="#fdecef"/>'
+      + '<path d="M98 42h12M104 36v12" stroke="#e7a3b6" stroke-width="1.6" fill="none"/>'
+      + '<circle cx="58" cy="34" r="16" fill="#f2c7b4"/>'
+      + '<path d="M42 34c2-14 30-16 34-2" fill="#3d2b28"/>'
+      + '<path d="M34 92c2-24 14-34 24-34s22 10 24 34" fill="#7a3048"/>'
+      + '<rect x="40" y="70" width="36" height="22" rx="3" fill="#d9c8bc"/>'
+      + '<circle cx="172" cy="34" r="16" fill="#f2c7b4"/>'
+      + '<path d="M156 40c4-18 28-18 32-2 2 6-2 10-8 10h-18c-4 0-8-3-6-8z" fill="#2b211c"/>'
+      + '<path d="M148 92c2-24 14-34 24-34s22 10 24 34" fill="#f2b8c4"/>'
+      + '<rect x="154" y="70" width="36" height="22" rx="3" fill="#d9c8bc"/>'
+      + '</svg>';
+  }
+
+  function imageUrl(fileName) {
+    return BASE_URL + '/images/' + fileName;
+  }
+
+  function nextModuleHref(root) {
+    var scope = root || document;
+    var link = scope.querySelector ? scope.querySelector('a.track--more') : null;
+    if (!link && scope.querySelector) {
+      var more = scope.querySelector('.track__more');
+      if (more && more.closest) link = more.closest('a');
+    }
+    if (!link && scope !== document) return nextModuleHref(document);
+    if (!link) {
+      var anchors = document.querySelectorAll('a');
+      for (var index = 0; index < anchors.length; index += 1) {
+        var label = anchors[index].textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (label === 'next module') return anchors[index].href || '';
+      }
+      return '';
+    }
+    return link.href || '';
+  }
+
+  function showModuleLocked(moduleName, lessons) {
+    var modal = ensureModal();
+    var items = lessons || [];
+    var total = items.length;
+    var done = items.filter(function (lesson) { return lesson.completed; }).length;
+    var percent = total ? Math.round((done / total) * 100) : 0;
+    var name = moduleName || 'this module';
+    var rows = items.map(function (lesson, index) {
+      var finished = Boolean(lesson.completed);
+      return '<li>'
+        + lessonIcon(index)
+        + '<span class="course-sync-lesson-name">' + escapeHtml(lesson.title) + '</span>'
+        + '<span class="course-sync-status ' + (finished ? 'is-done' : 'is-open') + '">'
+        + (finished ? '&#10003; Done' : '&#9675; Not done')
+        + '</span></li>';
+    }).join('');
+    var card = modal.querySelector('.course-sync-card');
+    card.className = 'course-sync-card course-sync-card-partner';
+    card.innerHTML = ''
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
+      + '<div class="course-sync-split">'
+      + '<div class="course-sync-hero">'
+      + '<img class="course-sync-art" alt="" src="' + imageUrl('partner-missing-course.png') + '" />'
+      + '<h2>Complete this module first</h2>'
+      + '<p class="course-sync-lead">Mark all ' + total + ' visible lessons in ' + escapeHtml(name) + ' as complete before the next module can open.</p>'
+      + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>Next module locked</strong><span>The next module will unlock automatically after you complete all ' + total + ' lessons.</span></div></div>'
+      + '</div>'
+      + '<div class="course-sync-panel">'
+      + '<div class="course-sync-panel-head"><div><h3>' + escapeHtml(name) + '</h3><p>Complete all lessons to unlock the next module.</p></div>'
+      + '<div class="course-sync-ring" style="--p:' + percent + '"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
+      + '<ul class="course-sync-lessons">' + rows + '</ul>'
+      + '<button type="button" class="course-sync-close">Close</button>'
+      + '</div></div>';
+    card.querySelector('.course-sync-x').onclick = function () { hideModal(modal); };
+    card.querySelector('.course-sync-close').onclick = function () { hideModal(modal); };
+    modal.classList.remove('is-locked');
+    revealModal(modal);
+  }
+
+  function showPartnerWait(label, person) {
+    var modal = ensureModal();
+    var role = label || 'partner';
+    var titleRole = role.charAt(0).toUpperCase() + role.slice(1);
+    var chapters = person && person.chapters ? person.chapters : [];
+    var total = Number(person && person.totalChapters || 0) || chapters.length;
+    var done = Number(person && person.completedChapters || 0);
+    if (!person || person.completedChapters == null) {
+      done = chapters.filter(function (chapter) { return chapter.completed; }).length;
+    }
+    var remaining = Math.max(0, total - done);
+    var percent = total ? Math.round((done / total) * 100) : 0;
+    var rows = chapters.map(function (chapter, index) {
+      var finished = Boolean(chapter.completed);
+      return '<li>'
+        + lessonIcon(index)
+        + '<span class="course-sync-lesson-name">' + escapeHtml(chapter.chapterName) + '</span>'
+        + '<span class="course-sync-status ' + (finished ? 'is-done' : 'is-open') + '">'
+        + (finished ? '&#10003; Done' : '&#9675; Not done')
+        + '</span></li>';
+    }).join('');
+    var card = modal.querySelector('.course-sync-card');
+    card.className = 'course-sync-card course-sync-card-partner';
+    card.innerHTML = ''
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
+      + '<div class="course-sync-split">'
+      + '<div class="course-sync-hero">'
+      + '<img class="course-sync-art" alt="" src="' + imageUrl('partner-wait.png') + '" />'
+      + '<h2>Wait for your ' + escapeHtml(role) + ' to complete</h2>'
+      + '<p class="course-sync-lead">Your ' + escapeHtml(role) + ' is currently working on the remaining chapters. Once they complete these, the next week will be unlocked for both of you.</p>'
+      + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 18c1-3 3-4 4-4s3 1 4 4M12 18c1-3 3-4 4-4s3 1 4 4"/></svg></span><div><strong>You\'re learning together</strong><span>Both of you need to complete the current week to unlock the next set of lessons.</span></div></div>'
+      + '</div>'
+      + '<div class="course-sync-panel">'
+      + '<div class="course-sync-panel-head"><div><h3>' + escapeHtml(titleRole) + '\'s Remaining Chapters</h3><p>Your ' + escapeHtml(role) + ' still needs to complete ' + remaining + ' chapter' + (remaining === 1 ? '' : 's') + ' from this week.</p></div>'
+      + '<div class="course-sync-ring" style="--p:' + percent + '"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
+      + '<ul class="course-sync-lessons">' + rows + '</ul>'
+      + '<button type="button" class="course-sync-close">Close</button>'
+      + '</div></div>';
+    card.querySelector('.course-sync-x').onclick = function () { hideModal(modal); };
+    card.querySelector('.course-sync-close').onclick = function () { hideModal(modal); };
+    modal.classList.remove('is-locked');
+    revealModal(modal);
+  }
+
+  function finishArt() {
+    return '<svg class="course-sync-art" width="230" height="112" viewBox="0 0 230 112" aria-hidden="true">'
+      + '<ellipse cx="115" cy="100" rx="78" ry="8" fill="#f6e4ea"/>'
+      + '<circle cx="18" cy="28" r="3" fill="#f2b8c4"/><circle cx="210" cy="24" r="3" fill="#c9b6f2"/>'
+      + '<circle cx="36" cy="18" r="2" fill="#f0c36a"/><circle cx="198" cy="40" r="2" fill="#8fd0a8"/>'
+      + '<path d="M70 22l4 8M160 18l-4 8" stroke="#f0c36a" stroke-width="2" stroke-linecap="round"/>'
+      + '<circle cx="78" cy="40" r="14" fill="#f2c7b4"/>'
+      + '<path d="M64 40c1-12 26-14 30-2" fill="#3d2b28"/>'
+      + '<path d="M58 96c2-22 12-32 22-32 6 0 12 4 16 12" fill="#7a3048"/>'
+      + '<path d="M92 62c10-16 22-18 28-8" fill="#f2c7b4"/>'
+      + '<circle cx="154" cy="40" r="14" fill="#f2c7b4"/>'
+      + '<path d="M140 46c3-16 26-16 30-2 2 5-2 8-7 8h-16c-4 0-8-2-7-6z" fill="#2b211c"/>'
+      + '<path d="M150 96c0-22 10-32 20-32s18 10 20 32" fill="#f2b8c4"/>'
+      + '<path d="M128 58c-8-14-18-16-24-8" fill="#f2c7b4"/>'
+      + '<rect x="62" y="78" width="34" height="16" rx="3" fill="#d9c8bc"/>'
+      + '<rect x="136" y="78" width="34" height="16" rx="3" fill="#d9c8bc"/>'
+      + '</svg>';
+  }
+
+  function showWeekComplete(weekNumber, person, nextHref) {
+    var modal = ensureModal();
+    var week = Number(weekNumber) || 1;
+    var next = week < 8 ? week + 1 : 0;
+    var chapters = person && person.chapters ? person.chapters : [];
+    var total = Number(person && person.totalChapters || 0) || chapters.length;
+    var done = total;
+    var rows = chapters.map(function (chapter, index) {
+      return '<li>'
+        + lessonIcon(index)
+        + '<span class="course-sync-lesson-name">' + escapeHtml(chapter.chapterName) + '</span>'
+        + '<span class="course-sync-status is-done">&#10003; Done</span></li>';
+    }).join('');
+    var lead = next
+      ? 'Great job! Both partners have completed all the lessons in Week ' + week + '. Week ' + next + ' is now unlocked for both of you.'
+      : 'Great job! Both partners have completed all the lessons in Week ' + week + '.';
+    var calloutTitle = next ? 'Week ' + next + ' Unlocked' : 'Course complete';
+    var calloutBody = next
+      ? 'You can now start the next set of lessons together.'
+      : 'You have finished every week together.';
+    var card = modal.querySelector('.course-sync-card');
+    card.className = 'course-sync-card course-sync-card-partner';
+    card.innerHTML = ''
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
+      + '<div class="course-sync-split">'
+      + '<div class="course-sync-hero">'
+      + '<img class="course-sync-art" alt="" src="' + imageUrl('week-complete.png') + '" />'
+      + '<h2>You both finished this week!</h2>'
+      + '<p class="course-sync-lead">' + lead + '</p>'
+      + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>' + calloutTitle + '</strong><span>' + calloutBody + '</span></div></div>'
+      + '</div>'
+      + '<div class="course-sync-panel">'
+      + '<div class="course-sync-panel-head"><div><h3>Week ' + week + ' Progress</h3><p>All lessons completed by both partners</p></div>'
+      + '<div class="course-sync-ring is-complete" style="--p:100"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
+      + '<ul class="course-sync-lessons">' + rows + '</ul>'
+      + '<button type="button" class="course-sync-close">Close</button>'
+      + '</div></div>';
+    var destination = nextHref || (next ? nextModuleHref(playlistRoot()) : '');
+    function closeComplete() {
+      hideModal(modal);
+      if (destination) window.location.href = destination;
+    }
+    card.querySelector('.course-sync-x').onclick = closeComplete;
+    card.querySelector('.course-sync-close').onclick = closeComplete;
+    modal.classList.remove('is-locked');
+    revealModal(modal);
+  }
+
   function showModal(title, message, names) {
     var modal = ensureModal();
+    resetCard(modal);
     modal.querySelector('h2').textContent = title;
     modal.querySelector('p').textContent = message;
     var body = modal.querySelector('.course-sync-body');
@@ -403,6 +659,7 @@ var CourseApi = (function () {
   function showEmailModal() {
     var modal = ensureModal();
     if (modal.classList.contains('is-locked') && modal.classList.contains('is-open')) return;
+    resetCard(modal);
     modal.classList.add('is-locked');
     revealModal(modal);
     modal.querySelector('h2').textContent = 'Save Your Course Progress';
@@ -627,15 +884,11 @@ var CourseApi = (function () {
         var week = findWeek(course.partner, update.weekNumber);
         var label = otherRole(course);
         var waiting = !(update.partner && update.partner.completed);
-        showModal(
-          waiting ? 'Wait for your ' + label + ' to complete' : 'You both finished this week',
-          update.partnership && update.partnership.message
-            ? update.partnership.message
-            : (waiting
-              ? 'Your ' + label + ' still has lessons left in this week.'
-              : 'Your ' + label + ' has finished this week too.'),
-          chapterLines(week),
-        );
+        if (waiting) {
+          showPartnerWait(label, week || update.partner);
+        } else {
+          showWeekComplete(update.weekNumber, week || update.user, nextModuleHref(playlistRoot()));
+        }
         return result;
       });
     });
@@ -721,11 +974,7 @@ var CourseApi = (function () {
     var lessons = moduleLessons(playlist);
     var missing = lessons.filter(function (lesson) { return lesson.title && !lesson.completed; });
     if (!lessons.length || missing.length) {
-      showModal(
-        'Complete this module first',
-        'Mark all ' + lessons.length + ' visible lessons in ' + moduleName + ' complete before the next module can open.',
-        missing.map(function (lesson) { return lesson.title; }),
-      );
+      showModuleLocked(moduleName, lessons);
       return;
     }
     if (!identityReady) {
@@ -750,16 +999,20 @@ var CourseApi = (function () {
       var partnerDone = update.partner && update.partner.completed;
       var bothDone = update.partnership && update.partnership.weekCompleted;
       if (!partnerDone || !bothDone) {
-        showModal(
-          'Wait for your ' + label + ' to complete',
-          moduleName + '. '
-            + (update.partnership && update.partnership.message ? update.partnership.message + ' ' : '')
-            + progressSentence(update.partner, label),
-          progressLines(update.partner),
-        );
+        var person = update.partner || {};
+        if (!person.chapters || !person.chapters.length) {
+          person = {
+            completedChapters: person.completedChapters || 0,
+            totalChapters: person.totalChapters || lessons.length,
+            chapters: lessons.map(function (lesson) {
+              return { chapterName: lesson.title, completed: false };
+            }),
+          };
+        }
+        showPartnerWait(label, person);
         return;
       }
-      if (control.href) window.location.href = control.href;
+      showWeekComplete(weekNumber, update.user, control.href || nextModuleHref(playlist));
     }).catch(function (error) {
       showModal('Could not open the next module', error.message);
     });
