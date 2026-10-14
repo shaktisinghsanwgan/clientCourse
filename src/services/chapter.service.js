@@ -5,6 +5,7 @@ import { getUserById, getUserByKajabiId } from './user.service.js';
 import {
   assertCourseAccess,
   assertWeekNumber,
+  chapterPayload,
   chaptersForWeek,
   completedFlags,
   loadChapterState,
@@ -179,6 +180,21 @@ function chapterSlug(value) {
   return slug || 'chapter';
 }
 
+function isGeneratedPlaceholder(chapterId) {
+  return /^week-\d+-chapter-\d+$/.test(chapterId);
+}
+
+async function retirePlaceholderChapters(weekNumbers) {
+  await Promise.all(weekNumbers.map((weekNumber) => prisma.courseChapter.updateMany({
+    where: {
+      weekNumber,
+      isActive: true,
+      chapterId: { startsWith: `week-${weekNumber}-chapter-` },
+    },
+    data: { isActive: false },
+  })));
+}
+
 async function resolveProgressChapter(item) {
   const chapterName = item.chapterName.trim();
   if (item.chapterId) {
@@ -223,9 +239,18 @@ async function resolveProgressChapter(item) {
 }
 
 export async function updateProgressByChapterNames(identity, chapters) {
-  const user = identity.kajabiUserId
-    ? await getUserByKajabiId(identity.kajabiUserId)
-    : await getUserById(identity.userId);
+  const user = identity.userId
+    ? await getUserById(identity.userId)
+    : await getUserByKajabiId(identity.kajabiUserId);
+  const realWeeks = new Set();
+  chapters.forEach((item) => {
+    if (item.weekNumber && item.chapterId && !isGeneratedPlaceholder(String(item.chapterId))) {
+      realWeeks.add(assertWeekNumber(item.weekNumber));
+    }
+  });
+  if (realWeeks.size > 0) {
+    await retirePlaceholderChapters([...realWeeks]);
+  }
   const updates = [];
   for (const item of chapters) {
     const chapter = await resolveProgressChapter(item);
@@ -304,6 +329,7 @@ export async function completeChapter(user, chapterId, completed) {
         email: user.email,
         role: user.role === 'PRIMARY' ? 'purchaser' : 'partner',
         ...publicSummary(userSummary),
+        chapters: chapterPayload(weekChapters, progressForUser(refreshed.progress, user.id)),
       },
       partner: {
         id: Number(partnerRecord.id),
@@ -311,6 +337,7 @@ export async function completeChapter(user, chapterId, completed) {
         email: partnerRecord.email,
         role: otherRole,
         ...publicSummary(partnerSummary),
+        chapters: chapterPayload(weekChapters, progressForUser(refreshed.progress, partnerId)),
       },
       partnership: {
         weekCompleted: userSummary.completed && partnerSummary.completed,

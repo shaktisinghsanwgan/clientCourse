@@ -384,6 +384,43 @@ describe('partner course synchronization', () => {
     expect(asPurchaser.body.partner.weeks[0].completedChapters).toBe(1);
   });
 
+  it('stores purchaser and partner progress on the same visible lessons', async () => {
+    const { john, jane } = await setupActivePartnership();
+    await prisma.user.update({ where: { email: 'john@example.com' }, data: { kajabiUserId: 'RS_ENC_v3_purchaser' } });
+    await prisma.user.update({ where: { email: 'jane@example.com' }, data: { kajabiUserId: 'RS_ENC_v3_partner' } });
+
+    const lessons = [
+      { chapterName: 'Course Orientation Video', weekNumber: 1, chapterId: '2200999846', completed: true },
+      { chapterName: 'Course Policies', weekNumber: 1, chapterId: '2200999847', completed: false },
+    ];
+    const purchaser = await request(app).post('/api/v1/chapters/progress').send({
+      userId: john.user.id,
+      kajabiUserId: '2278069412',
+      chapters: lessons,
+    });
+    expect(purchaser.status).toBe(200);
+    const purchaserUpdate = purchaser.body.data.updates[purchaser.body.data.updates.length - 1];
+    expect(purchaserUpdate.user.email).toBe('john@example.com');
+    expect(purchaserUpdate.user.completedChapters).toBe(1);
+    expect(purchaserUpdate.user.totalChapters).toBe(2);
+    expect(purchaserUpdate.partner.email).toBe('jane@example.com');
+    expect(purchaserUpdate.partner.completedChapters).toBe(0);
+    expect(await prisma.courseChapter.count({
+      where: { weekNumber: 1, isActive: true, chapterId: { startsWith: 'week-1-chapter-' } },
+    })).toBe(0);
+
+    const partner = await request(app).post('/api/v1/chapters/progress').send({
+      kajabiUserId: 'RS_ENC_v3_partner',
+      chapters: lessons.map((lesson) => ({ ...lesson, completed: true })),
+    });
+    expect(partner.status).toBe(200);
+    const partnerUpdate = partner.body.data.updates[partner.body.data.updates.length - 1];
+    expect(partnerUpdate.user.email).toBe('jane@example.com');
+    expect(partnerUpdate.user.completedChapters).toBe(2);
+    expect(partnerUpdate.partner.email).toBe('john@example.com');
+    expect(partnerUpdate.partner.completedChapters).toBe(1);
+  });
+
   it('keeps Week 2 locked until both partners finish Week 1, including when the partner finishes first', async () => {
     const { john, jane } = await setupActivePartnership();
 
