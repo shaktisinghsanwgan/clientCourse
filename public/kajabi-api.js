@@ -334,14 +334,14 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-card-partner{position:relative;width:min(920px,100%);max-height:calc(100vh - 32px);overflow:hidden;padding:0;background:#fff;color:#241c22;border-radius:22px;font-family:"Segoe UI",system-ui,sans-serif;box-shadow:0 24px 70px rgba(40,20,28,.22);}'
       + '#course-sync-modal .course-sync-x{position:absolute;top:12px;right:14px;z-index:2;margin:0;width:32px;height:32px;padding:0;border-radius:8px;background:transparent;color:#8d8380;font-size:22px;line-height:32px;}'
       + '#course-sync-modal .course-sync-split{display:grid;grid-template-columns:minmax(280px,42%) minmax(0,1fr);min-height:460px;}'
-      + '#course-sync-modal .course-sync-hero{padding:28px 28px 24px;background:#fffaf8;}'
+      + '#course-sync-modal .course-sync-hero{display:flex;flex-direction:column;padding:28px 28px 24px;background:#fffaf8;}'
       + '#course-sync-modal .course-sync-art{display:flex;justify-content:center;margin:8px 0 18px;}'
-      + '#course-sync-modal .course-sync-picture{display:flex !important;align-items:center;justify-content:center;min-height:200px;margin:4px 0 12px;background-repeat:no-repeat;background-position:center;background-size:contain;flex:1 1 auto;}'
-      + '#course-sync-modal .course-sync-picture img{display:block !important;position:static !important;width:min(300px,100%) !important;max-width:100% !important;height:auto !important;max-height:240px !important;min-height:160px !important;margin:0 auto !important;object-fit:contain !important;opacity:1 !important;visibility:visible !important;flex:0 0 auto !important;}'
+      + '#course-sync-modal .course-sync-picture{display:block !important;width:100%;flex:1 1 auto;min-height:320px;margin:0 0 18px;background-repeat:no-repeat !important;background-position:center center !important;background-size:contain !important;}'
+      + '#course-sync-modal .course-sync-picture img{display:none !important;}'
       + '#course-sync-modal svg{position:static !important;display:block !important;width:18px !important;height:18px !important;min-width:18px !important;min-height:18px !important;max-width:18px !important;max-height:18px !important;overflow:visible !important;transform:none !important;inset:auto !important;flex:none !important;}'
       + '#course-sync-modal .course-sync-card-partner h2{margin:0 0 10px;font-size:32px;line-height:1.15;font-weight:750;letter-spacing:-.03em;color:#1d1a1c;}'
       + '#course-sync-modal .course-sync-card-partner .course-sync-lead{margin:0;color:#6f6562;font-size:15px;line-height:1.45;}'
-      + '#course-sync-modal .course-sync-together{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px 16px;border-radius:16px;background:#fdecef;}'
+      + '#course-sync-modal .course-sync-together{display:flex;gap:12px;align-items:flex-start;margin-top:auto;padding:14px 16px;border-radius:16px;background:#fdecef;}'
       + '#course-sync-modal .course-sync-together strong{display:block;margin-bottom:2px;color:#2a2326;font-size:14px;}'
       + '#course-sync-modal .course-sync-together span{color:#6f6562;font-size:13px;line-height:1.4;}'
       + '#course-sync-modal .course-sync-people{position:relative !important;width:34px;height:34px;min-width:34px;border-radius:10px;background:#f8d5df;color:#c45c78;display:grid;place-items:center;overflow:hidden;flex:none;}'
@@ -378,6 +378,13 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-warn{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:#fdecef;color:#6f6562;font-size:13px;line-height:1.4;}'
       + '#course-sync-modal .course-sync-warn svg{flex:none;margin-top:1px;color:#d15b78;}'
       + '#course-sync-modal .course-sync-warn strong{display:block;margin:0 0 4px;color:#2a2326;font-weight:650;}'
+      + '#course-sync-modal .course-sync-card-stuck{width:min(780px,100%);}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-split{min-height:0;align-items:stretch;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-hero{justify-content:center;padding:16px 4px 16px 16px;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-panel{padding:32px 32px 28px 16px;justify-content:center;}'
+      + '#course-sync-modal .course-sync-card-stuck h2{font-size:28px;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-lead{margin:0 0 16px;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-warn{margin-top:0;}'
       + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
@@ -465,28 +472,17 @@ var CourseApi = (function () {
       if (!src) continue;
       box.style.setProperty('display', 'block', 'important');
       box.style.setProperty('width', '100%', 'important');
-      box.style.setProperty('height', '220px', 'important');
-      box.style.setProperty('min-height', '220px', 'important');
-      box.style.setProperty('margin', '0 0 16px', 'important');
+      box.style.setProperty('height', 'auto', 'important');
+      var compact = Boolean(box.closest && box.closest('.course-sync-card-stuck'));
+      box.style.setProperty('min-height', compact ? '240px' : '320px', 'important');
+      box.style.setProperty('flex', compact ? '1 1 240px' : '1 1 auto', 'important');
+      box.style.setProperty('margin', compact ? '0' : '0 0 18px', 'important');
       box.style.setProperty('background-image', 'url("' + src + '")', 'important');
       box.style.setProperty('background-repeat', 'no-repeat', 'important');
       box.style.setProperty('background-position', 'center center', 'important');
       box.style.setProperty('background-size', 'contain', 'important');
-      var img = box.querySelector('img');
-      if (!img) {
-        img = document.createElement('img');
-        img.alt = '';
-        box.appendChild(img);
-      }
-      img.src = src;
-      img.style.setProperty('display', 'block', 'important');
-      img.style.setProperty('width', '100%', 'important');
-      img.style.setProperty('height', '220px', 'important');
-      img.style.setProperty('max-width', '100%', 'important');
-      img.style.setProperty('object-fit', 'contain', 'important');
-      img.style.setProperty('opacity', '1', 'important');
-      img.style.setProperty('visibility', 'visible', 'important');
-      img.style.setProperty('position', 'static', 'important');
+      var images = box.querySelectorAll('img');
+      for (var imageIndex = 0; imageIndex < images.length; imageIndex += 1) images[imageIndex].remove();
     }
   }
 
@@ -510,6 +506,7 @@ var CourseApi = (function () {
   }
 
   function showModuleLocked(moduleName, lessons) {
+    if (stuckModalOpen()) return;
     var modal = ensureModal();
     var items = lessons || [];
     var total = items.length;
@@ -549,6 +546,7 @@ var CourseApi = (function () {
   }
 
   function showPartnerWait(label, person) {
+    if (stuckModalOpen()) return;
     var modal = ensureModal();
     var role = label || 'partner';
     var titleRole = role.charAt(0).toUpperCase() + role.slice(1);
@@ -612,6 +610,7 @@ var CourseApi = (function () {
   }
 
   function showWeekComplete(weekNumber, person, nextHref) {
+    if (stuckModalOpen()) return;
     var modal = ensureModal();
     var week = Number(weekNumber) || 1;
     var next = week < 8 ? week + 1 : 0;
@@ -659,7 +658,28 @@ var CourseApi = (function () {
     revealModal(modal);
   }
 
+  function showPartnerStuck(chapterName) {
+    var modal = ensureModal();
+    if (modal.classList.contains('is-open') && modal.querySelector('.course-sync-card-email')) return;
+    var name = chapterName || 'the previous chapter';
+    var card = modal.querySelector('.course-sync-card');
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-stuck';
+    card.innerHTML = ''
+      + '<div class="course-sync-split">'
+      + '<div class="course-sync-hero">'
+      + modalImage('partner-stuck.png')
+      + '</div>'
+      + '<div class="course-sync-panel">'
+      + '<h2>Progress was not saved</h2>'
+      + '<p class="course-sync-lead">Your partner unmarked the completed progress of the previous week.</p>'
+      + '<div class="course-sync-warn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div><strong>It looks like they are still looking at ' + escapeHtml(name) + '.</strong><span>This week stays closed until they finish that chapter again.</span></div></div>'
+      + '</div></div>';
+    modal.classList.add('is-locked');
+    revealModal(modal);
+  }
+
   function showModal(title, message, names) {
+    if (stuckModalOpen()) return document.createElement('div');
     var modal = ensureModal();
     resetCard(modal);
     modal.querySelector('h2').textContent = title;
@@ -706,6 +726,7 @@ var CourseApi = (function () {
   }
 
   function hideModal(modal) {
+    if (modal.querySelector('.course-sync-card-stuck')) return;
     modal.style.setProperty('display', 'none', 'important');
     modal.classList.remove('is-open', 'is-locked');
     document.documentElement.style.removeProperty('overflow');
@@ -954,13 +975,70 @@ var CourseApi = (function () {
     });
   }
 
+  function currentWeekNumber() {
+    var lesson = readLesson();
+    if (lesson.weekNumber >= 1 && lesson.weekNumber <= 8) return lesson.weekNumber;
+    var fromPlaylist = weekNumberFromPlaylist(playlistRoot());
+    return fromPlaylist >= 1 && fromPlaylist <= 8 ? fromPlaylist : 0;
+  }
+
+  function partnerStuckChapter(course, weekNumber) {
+    if (!course || weekNumber < 2) return '';
+    for (var week = 1; week < weekNumber; week += 1) {
+      var userWeek = findWeek(course.user, week);
+      var partnerWeek = findWeek(course.partner, week);
+      if (!userWeek || !userWeek.completed) continue;
+      if (!partnerWeek || partnerWeek.completed) continue;
+      var names = incompleteNames(partnerWeek);
+      return names.length ? names[0] : ('Week ' + week);
+    }
+    return '';
+  }
+
+  function isWeekLocked(error) {
+    var code = error && error.body && error.body.errorCode;
+    if (code === 'WEEK_LOCKED') return true;
+    return /cannot access this week/i.test((error && error.message) || '');
+  }
+
+  function stuckModalOpen() {
+    var modal = document.getElementById('course-sync-modal');
+    return Boolean(modal && modal.classList.contains('is-open') && modal.querySelector('.course-sync-card-stuck'));
+  }
+
+  function openPartnerStuck(weekNumber) {
+    var week = weekNumber || currentWeekNumber();
+    if (!kajabiUserId || week < 2) return Promise.resolve(false);
+    return CourseApi.getCourse(kajabiUserId).then(function (course) {
+      var chapterName = partnerStuckChapter(course, week);
+      if (!chapterName) return false;
+      showPartnerStuck(chapterName);
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function reportProgressError(error, title) {
+    if (stuckModalOpen()) return;
+    if (isWeekLocked(error)) {
+      openPartnerStuck(currentWeekNumber()).then(function (shown) {
+        if (!shown && !stuckModalOpen()) showModal(title || 'Progress was not saved', error.message);
+      });
+      return;
+    }
+    showModal(title || 'Progress was not saved', error.message);
+  }
+
   function handleKnownUser() {
+    var weekNumber = currentWeekNumber();
+    if (weekNumber >= 2) openPartnerStuck(weekNumber);
     if (!isLessonPage()) return;
     watchLesson();
     var override = pendingCompletion;
     pendingCompletion = null;
     syncVisibleProgress(override, Boolean(override)).catch(function (error) {
-      if (override && !isMissingIdentity(error)) showModal('Progress was not saved', error.message);
+      if (override && !isMissingIdentity(error)) reportProgressError(error, 'Progress was not saved');
     });
   }
 
@@ -1002,7 +1080,7 @@ var CourseApi = (function () {
     }
     var completed = !control || control.getAttribute('data-post-completion-toggle') !== 'true';
     syncVisibleProgress({ chapterId: lesson.chapterId, completed: completed }, true).catch(function (error) {
-      if (!isMissingIdentity(error)) showModal('Progress was not saved', error.message);
+      if (!isMissingIdentity(error)) reportProgressError(error, 'Progress was not saved');
     });
   }
 
@@ -1074,7 +1152,7 @@ var CourseApi = (function () {
       }
       showWeekComplete(weekNumber, update.user, control.href || nextModuleHref(playlist));
     }).catch(function (error) {
-      showModal('Could not open the next module', error.message);
+      reportProgressError(error, 'Could not open the next module');
     });
   }
 
