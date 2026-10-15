@@ -336,13 +336,15 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-split{display:grid;grid-template-columns:minmax(280px,42%) minmax(0,1fr);min-height:460px;}'
       + '#course-sync-modal .course-sync-hero{padding:28px 28px 24px;background:#fffaf8;}'
       + '#course-sync-modal .course-sync-art{display:flex;justify-content:center;margin:8px 0 18px;}'
-      + '#course-sync-modal img.course-sync-art{display:block;width:min(340px,100%);height:auto;margin:8px auto 18px;object-fit:contain;}'
+      + '#course-sync-modal .course-sync-picture{display:flex !important;align-items:center;justify-content:center;min-height:200px;margin:4px 0 12px;background-repeat:no-repeat;background-position:center;background-size:contain;flex:1 1 auto;}'
+      + '#course-sync-modal .course-sync-picture img{display:block !important;position:static !important;width:min(300px,100%) !important;max-width:100% !important;height:auto !important;max-height:240px !important;min-height:160px !important;margin:0 auto !important;object-fit:contain !important;opacity:1 !important;visibility:visible !important;flex:0 0 auto !important;}'
+      + '#course-sync-modal svg{position:static !important;display:block !important;width:18px !important;height:18px !important;min-width:18px !important;min-height:18px !important;max-width:18px !important;max-height:18px !important;overflow:visible !important;transform:none !important;inset:auto !important;flex:none !important;}'
       + '#course-sync-modal .course-sync-card-partner h2{margin:0 0 10px;font-size:32px;line-height:1.15;font-weight:750;letter-spacing:-.03em;color:#1d1a1c;}'
       + '#course-sync-modal .course-sync-card-partner .course-sync-lead{margin:0;color:#6f6562;font-size:15px;line-height:1.45;}'
       + '#course-sync-modal .course-sync-together{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px 16px;border-radius:16px;background:#fdecef;}'
       + '#course-sync-modal .course-sync-together strong{display:block;margin-bottom:2px;color:#2a2326;font-size:14px;}'
       + '#course-sync-modal .course-sync-together span{color:#6f6562;font-size:13px;line-height:1.4;}'
-      + '#course-sync-modal .course-sync-people{width:34px;height:34px;border-radius:10px;background:#f8d5df;color:#c45c78;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-people{position:relative !important;width:34px;height:34px;min-width:34px;border-radius:10px;background:#f8d5df;color:#c45c78;display:grid;place-items:center;overflow:hidden;flex:none;}'
       + '#course-sync-modal .course-sync-panel{padding:54px 28px 20px 24px;display:flex;flex-direction:column;min-width:0;}'
       + '#course-sync-modal .course-sync-panel-head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin:0 0 16px;padding:0 8px 0 0;}'
       + '#course-sync-modal .course-sync-panel h3{margin:0 0 4px;font-size:18px;line-height:1.25;color:#1d1a1c;}'
@@ -365,12 +367,12 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-card-email .course-sync-panel{padding:28px 28px 22px 24px;overflow:auto;}'
       + '#course-sync-modal .course-sync-reasons{list-style:none;margin:16px 0 8px;padding:0;display:flex;flex-direction:column;gap:12px;}'
       + '#course-sync-modal .course-sync-reasons li{display:flex;gap:12px;align-items:flex-start;margin:0;padding:0;}'
-      + '#course-sync-modal .course-sync-reason-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-reason-icon{position:relative !important;width:34px;height:34px;min-width:34px;border-radius:10px;display:grid;place-items:center;overflow:hidden;flex:none;}'
       + '#course-sync-modal .course-sync-reasons strong{display:block;margin:0 0 2px;font-size:14px;color:#2a2326;}'
       + '#course-sync-modal .course-sync-reasons span{display:block;margin:0;color:#6f6562;font-size:13px;line-height:1.4;}'
       + '#course-sync-modal .course-sync-req{color:#d15b78;}'
       + '#course-sync-modal .course-sync-field{position:relative;}'
-      + '#course-sync-modal .course-sync-field svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#8d8380;pointer-events:none;}'
+      + '#course-sync-modal .course-sync-field svg{position:absolute !important;left:12px !important;top:50% !important;width:16px !important;height:16px !important;min-width:16px !important;min-height:16px !important;max-width:16px !important;max-height:16px !important;transform:translateY(-50%) !important;color:#8d8380;pointer-events:none;}'
       + '#course-sync-modal .course-sync-field input{padding-left:40px;border:1px solid #e4d9d4;border-radius:10px;}'
       + '#course-sync-modal .course-sync-card-email .course-sync-continue{width:100%;margin-top:14px;border-radius:12px;padding:12px 18px;font-weight:650;}'
       + '#course-sync-modal .course-sync-warn{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px 14px;border-radius:12px;background:#fdecef;color:#6f6562;font-size:13px;line-height:1.4;}'
@@ -451,6 +453,43 @@ var CourseApi = (function () {
     return BASE_URL + '/images/' + fileName;
   }
 
+  function modalImage(fileName) {
+    return '<div class="course-sync-picture" data-image="' + imageUrl(fileName) + '"></div>';
+  }
+
+  function paintModalImages(modal) {
+    var boxes = modal.querySelectorAll('.course-sync-picture');
+    for (var index = 0; index < boxes.length; index += 1) {
+      var box = boxes[index];
+      var src = box.getAttribute('data-image');
+      if (!src) continue;
+      box.style.setProperty('display', 'block', 'important');
+      box.style.setProperty('width', '100%', 'important');
+      box.style.setProperty('height', '220px', 'important');
+      box.style.setProperty('min-height', '220px', 'important');
+      box.style.setProperty('margin', '0 0 16px', 'important');
+      box.style.setProperty('background-image', 'url("' + src + '")', 'important');
+      box.style.setProperty('background-repeat', 'no-repeat', 'important');
+      box.style.setProperty('background-position', 'center center', 'important');
+      box.style.setProperty('background-size', 'contain', 'important');
+      var img = box.querySelector('img');
+      if (!img) {
+        img = document.createElement('img');
+        img.alt = '';
+        box.appendChild(img);
+      }
+      img.src = src;
+      img.style.setProperty('display', 'block', 'important');
+      img.style.setProperty('width', '100%', 'important');
+      img.style.setProperty('height', '220px', 'important');
+      img.style.setProperty('max-width', '100%', 'important');
+      img.style.setProperty('object-fit', 'contain', 'important');
+      img.style.setProperty('opacity', '1', 'important');
+      img.style.setProperty('visibility', 'visible', 'important');
+      img.style.setProperty('position', 'static', 'important');
+    }
+  }
+
   function nextModuleHref(root) {
     var scope = root || document;
     var link = scope.querySelector ? scope.querySelector('a.track--more') : null;
@@ -492,7 +531,7 @@ var CourseApi = (function () {
       + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + '<div class="course-sync-split">'
       + '<div class="course-sync-hero">'
-      + '<img class="course-sync-art" alt="" src="' + imageUrl('partner-missing-course.png') + '" />'
+      + modalImage('partner-missing-course.png')
       + '<h2>Complete this module first</h2>'
       + '<p class="course-sync-lead">Mark all ' + total + ' visible lessons in ' + escapeHtml(name) + ' as complete before the next module can open.</p>'
       + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>Next module locked</strong><span>The next module will unlock automatically after you complete all ' + total + ' lessons.</span></div></div>'
@@ -536,7 +575,7 @@ var CourseApi = (function () {
       + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + '<div class="course-sync-split">'
       + '<div class="course-sync-hero">'
-      + '<img class="course-sync-art" alt="" src="' + imageUrl('partner-wait.png') + '" />'
+      + modalImage('partner-wait.png')
       + '<h2>Wait for your ' + escapeHtml(role) + ' to complete</h2>'
       + '<p class="course-sync-lead">Your ' + escapeHtml(role) + ' is currently working on the remaining chapters. Once they complete these, the next week will be unlocked for both of you.</p>'
       + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 18c1-3 3-4 4-4s3 1 4 4M12 18c1-3 3-4 4-4s3 1 4 4"/></svg></span><div><strong>You\'re learning together</strong><span>Both of you need to complete the current week to unlock the next set of lessons.</span></div></div>'
@@ -598,7 +637,7 @@ var CourseApi = (function () {
       + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + '<div class="course-sync-split">'
       + '<div class="course-sync-hero">'
-      + '<img class="course-sync-art" alt="" src="' + imageUrl('week-complete.png') + '" />'
+      + modalImage('week-complete.png')
       + '<h2>You both finished this week!</h2>'
       + '<p class="course-sync-lead">' + lead + '</p>'
       + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>' + calloutTitle + '</strong><span>' + calloutBody + '</span></div></div>'
@@ -662,6 +701,7 @@ var CourseApi = (function () {
     modal.style.setProperty('overflow', 'hidden', 'important');
     document.documentElement.style.setProperty('overflow', 'hidden', 'important');
     document.body.style.setProperty('overflow', 'hidden', 'important');
+    paintModalImages(modal);
     modal.classList.add('is-open');
   }
 
@@ -680,7 +720,7 @@ var CourseApi = (function () {
     card.innerHTML = ''
       + '<div class="course-sync-split">'
       + '<div class="course-sync-hero">'
-      + '<img class="course-sync-art" alt="" src="' + imageUrl('course-email.png') + '" />'
+      + modalImage('course-email.png')
       + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><div><strong>Your progress is safe</strong><span>We\'ll securely link your learning account to this email address.</span></div></div>'
       + '</div>'
       + '<div class="course-sync-panel">'
