@@ -86,6 +86,10 @@ export function getCourse(userId) {
   return api(`/api/v1/course/sync?userId=${encodeURIComponent(userId)}`);
 }
 
+export function syncStatus(userId) {
+  return api(`/api/v1/status/sync?userId=${encodeURIComponent(userId)}`);
+}
+
 export function getPartnerProgress(purchaserEmail) {
   return api(`/api/v1/progress/partner?purchaserEmail=${encodeURIComponent(purchaserEmail)}`);
 }

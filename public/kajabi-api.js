@@ -7,6 +7,7 @@ var CourseApi = (function () {
   var accountUserId = '';
   var identityReady = false;
   var pendingCompletion = null;
+  var statusPollTimer = null;
 
   function request(path, options) {
     var settings = options || {};
@@ -911,6 +912,19 @@ var CourseApi = (function () {
     if (id) kajabiUserId = id;
     identityReady = true;
     if (kajabiUserId) localStorage.setItem('courseSync.linkedId', kajabiUserId);
+    startStatusPoll();
+  }
+
+  function startStatusPoll() {
+    if (statusPollTimer || (!kajabiUserId && !accountUserId)) return;
+    function tick() {
+      var query = kajabiUserId
+        ? ('kajabiUserId=' + encodeURIComponent(kajabiUserId))
+        : ('userId=' + encodeURIComponent(accountUserId));
+      request('/api/v1/status/sync?' + query).catch(function () {});
+    }
+    tick();
+    statusPollTimer = window.setInterval(tick, 60000);
   }
 
   function visibleChapters(override) {
@@ -1226,6 +1240,9 @@ var CourseApi = (function () {
     },
     getCourse: function (id) {
       return request('/api/v1/course/sync?kajabiUserId=' + encodeURIComponent(id));
+    },
+    syncStatus: function (id) {
+      return request('/api/v1/status/sync?kajabiUserId=' + encodeURIComponent(id));
     },
     updateChapterProgress: function (input) {
       return request('/api/v1/chapters/progress', {

@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js",
+    "inactivity:check": "node scripts/check-inactive-users.js",
     "test": "vitest run",
     "lint": "node scripts/check-syntax.js"
   },
@@ -26,6 +27,8 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.2.1",
     "prisma": "^6.16.2",
     "zod": "^3.25.76"
   },

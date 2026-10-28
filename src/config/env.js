@@ -67,4 +67,36 @@ export const env = {
   get ADMIN_API_KEY() {
     return optional('ADMIN_API_KEY');
   },
+  get SMTP_HOST() {
+    return optional('SMTP_HOST');
+  },
+  get SMTP_PORT() {
+    return Number(optional('SMTP_PORT') || 587);
+  },
+  get SMTP_USER() {
+    return optional('SMTP_USER');
+  },
+  get SMTP_PASSWORD() {
+    return optional('SMTP_PASSWORD');
+  },
+  get SMTP_FROM() {
+    return optional('SMTP_FROM');
+  },
+  get SMTP_SECURE() {
+    const value = optional('SMTP_SECURE').toLowerCase();
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return Number(optional('SMTP_PORT') || 587) === 465;
+  },
+  get INACTIVITY_DAYS() {
+    const value = Number(optional('INACTIVITY_DAYS') || 7);
+    return Number.isFinite(value) && value > 0 ? value : 7;
+  },
+  get INACTIVITY_CRON() {
+    return optional('INACTIVITY_CRON') || '15 * * * *';
+  },
+  get STATUS_LIVE_MINUTES() {
+    const value = Number(optional('STATUS_LIVE_MINUTES') || 2);
+    return Number.isFinite(value) && value > 0 ? value : 2;
+  },
 };

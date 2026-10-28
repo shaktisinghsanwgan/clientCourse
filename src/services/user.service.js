@@ -5,6 +5,7 @@ import { env } from '../config/env.js';
 import { ApiError } from '../utils/errors.js';
 import { toPublicUser } from '../utils/response.js';
 import { asId, normalizeEmail } from '../utils/security.js';
+import { touchActivity } from './activity.service.js';
 import {
   extractPurchaseWebhook,
   isKajabiApiConfigured,
@@ -75,6 +76,8 @@ export async function registerPurchaser(input) {
     role: 'PRIMARY',
     status: 'ACTIVE',
     emailVerified: true,
+    lastActivityAt: new Date(),
+    lastSeenAt: new Date(),
     ...fields,
   };
 
@@ -111,6 +114,8 @@ export async function syncAuthenticatedUser(user, input) {
   const data = {
     kajabiUserId: verification.customer.id,
     name: user.name,
+    lastActivityAt: new Date(),
+    lastSeenAt: new Date(),
   };
 
   if (user.role === 'PRIMARY' && verification.paid && user.paymentStatus !== 'PAID') {
@@ -187,6 +192,8 @@ async function activateInvitedPartner(email) {
         paymentStatus: 'PENDING',
         status: 'ACTIVE',
         emailVerified: true,
+        lastActivityAt: new Date(),
+        lastSeenAt: new Date(),
       },
     });
 
@@ -266,15 +273,15 @@ export async function bindKajabiIdentity(input) {
     throw new ApiError(409, 'This login is already linked to another email.', 'IDENTITY_CONFLICT');
   }
 
-  const updated = existing.kajabiUserId === kajabiUserId
-    ? existing
-    : await prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        kajabiUserId,
-        ...(name ? { name } : {}),
-      },
-    });
+  const updated = await prisma.user.update({
+    where: { id: existing.id },
+    data: {
+      kajabiUserId,
+      lastActivityAt: new Date(),
+      lastSeenAt: new Date(),
+      ...(name ? { name } : {}),
+    },
+  });
   if (name && updated.role === 'PARTNER') {
     await prisma.partner.updateMany({
       where: { partnerUserId: updated.id },
@@ -305,6 +312,8 @@ export async function updateUserAccount(userId, input) {
   if (!data.name && !data.email) {
     throw new ApiError(400, 'Name or email is required', 'VALIDATION_ERROR');
   }
+  data.lastActivityAt = new Date();
+  data.lastSeenAt = new Date();
 
   const updated = await prisma.$transaction(async (tx) => {
     const saved = await tx.user.update({ where: { id: user.id }, data });
@@ -343,7 +352,7 @@ export async function loginByEmail(emailInput) {
     throw new ApiError(404, 'Account not found', 'IDENTITY_NOT_FOUND');
   }
 
-  return authPayload(user);
+  return authPayload(await touchActivity(user.id));
 }
 
 export async function applyVerifiedPurchaseWebhook(body) {
@@ -388,6 +397,8 @@ export async function applyVerifiedPurchaseWebhook(body) {
     offerReference: verification.offerId,
     paymentVerificationSource: 'kajabi_api',
     paymentVerifiedAt: new Date(),
+    lastActivityAt: new Date(),
+    lastSeenAt: new Date(),
   };
 
   const user = existing

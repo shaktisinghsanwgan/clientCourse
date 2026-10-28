@@ -40,16 +40,20 @@ model User {
   offerReference            String?       @map("offer_reference") @db.VarChar(255)
   paymentVerificationSource String?       @map("payment_verification_source") @db.VarChar(50)
   paymentVerifiedAt         DateTime?     @map("payment_verified_at")
+  lastActivityAt            DateTime      @default(now()) @map("last_activity_at")
+  lastSeenAt                DateTime      @default(now()) @map("last_seen_at")
   createdAt                 DateTime      @default(now()) @map("created_at")
   updatedAt                 DateTime      @updatedAt @default(now()) @map("updated_at")
 
-  primaryPartnership Partner?          @relation("PrimaryUser")
-  partnerPartnership Partner?          @relation("PartnerUser")
+  primaryPartnership Partner?           @relation("PrimaryUser")
+  partnerPartnership Partner?           @relation("PartnerUser")
   progress           Progress[]
   chapterProgress    ChapterProgress[]
+  inactivityNotices  InactivityNotice[]
 
   @@index([role])
   @@index([paymentStatus])
+  @@index([status, lastActivityAt])
   @@map("users")
 }
 
@@ -120,6 +124,19 @@ model ChapterProgress {
   @@unique([userId, chapterId])
   @@index([chapterId])
   @@map("chapter_progress")
+}
+
+model InactivityNotice {
+  id             BigInt   @id @default(autoincrement())
+  userId         BigInt   @map("user_id")
+  recipientEmail String   @map("recipient_email") @db.VarChar(255)
+  lastActivityAt DateTime @map("last_activity_at")
+  sentAt         DateTime @default(now()) @map("sent_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, lastActivityAt])
+  @@map("inactivity_notices")
 }
 
 model EmailConfirmation {

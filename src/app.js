@@ -14,6 +14,7 @@ import courseRoutes from './routes/course.routes.js';
 import chapterRoutes from './routes/chapter.routes.js';
 import progressRoutes from './routes/progress.routes.js';
 import integrationRoutes from './routes/integration.routes.js';
+import statusRoutes from './routes/status.routes.js';
 
 export const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/v1/course', courseRoutes);
 app.use('/api/v1/chapters', chapterRoutes);
 app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
+app.use('/api/v1/status', statusRoutes);
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../public');
 app.use(express.static(publicDir));

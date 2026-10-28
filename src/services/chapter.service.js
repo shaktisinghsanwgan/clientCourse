@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { ApiError } from '../utils/errors.js';
 import { getWeekProgress } from './progress.service.js';
+import { touchActivity } from './activity.service.js';
 import { getUserById, getUserByKajabiId } from './user.service.js';
 import {
   assertCourseAccess,
@@ -308,6 +309,7 @@ export async function completeChapter(user, chapterId, completed) {
     }
 
     await recalculateUsersForWeeks(tx, [partnership.primaryUserId, partnership.partnerUserId], [chapter.weekNumber]);
+    await touchActivity(user.id, new Date(), tx);
 
     const refreshed = await loadChapterState(tx, partnership.primaryUserId, partnership.partnerUserId);
     const weekChapters = chaptersForWeek(refreshed.chapters, chapter.weekNumber);
