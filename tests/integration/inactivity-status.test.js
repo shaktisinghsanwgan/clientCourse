@@ -34,7 +34,7 @@ function captureMail() {
 }
 
 describe('inactivity email and live status', () => {
-  it('emails the other client once when a user has been inactive for more than a week', async () => {
+  it('emails CLIENT_EMAIL once when a user has been inactive for more than a week', async () => {
     await activePair();
     const now = new Date();
     const stale = new Date(now.getTime() - (8 * DAY_MS));
@@ -48,7 +48,7 @@ describe('inactivity email and live status', () => {
     expect(first.notified).toBe(1);
     expect(first.failed).toBe(0);
     expect(mail.sent).toHaveLength(1);
-    expect(mail.sent[0].to).toBe(JOHN.email);
+    expect(mail.sent[0].to).toBe('client@example.com');
     expect(mail.sent[0].inactiveUser.email).toBe(JANE.email);
     expect(mail.sent[0].inactiveUser.name).toBe('Jane Doe');
     expect(mail.sent[0].days).toBe(7);
@@ -113,8 +113,7 @@ describe('inactivity email and live status', () => {
     const mail = captureMail();
     const summary = await notifyInactiveUsers({ send: mail.send });
     expect(summary.notified).toBe(2);
-    const recipientByUser = Object.fromEntries(mail.sent.map((item) => [item.inactiveUser.email, item.to]));
-    expect(recipientByUser[JANE.email]).toBe(JOHN.email);
-    expect(recipientByUser[JOHN.email]).toBe(JANE.email);
+    expect(mail.sent.every((item) => item.to === 'client@example.com')).toBe(true);
+    expect(mail.sent.map((item) => item.inactiveUser.email).sort()).toEqual([JANE.email, JOHN.email].sort());
   });
 });

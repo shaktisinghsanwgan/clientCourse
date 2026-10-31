@@ -8,6 +8,11 @@ var CourseApi = (function () {
   var identityReady = false;
   var pendingCompletion = null;
   var statusPollTimer = null;
+  var partnerWaitTimer = null;
+  var partnerWaitState = null;
+  var partnerWaitRequest = 0;
+  var playlistChecks = {};
+  var playlistCheckObserver = null;
 
   function request(path, options) {
     var settings = options || {};
@@ -274,10 +279,71 @@ var CourseApi = (function () {
         title: cleanText(track.querySelector('.track__title')),
         weekNumber: weekNumber,
         chapterId: postMatch ? postMatch[1] : '',
-        completed: Boolean(track.querySelector('.fa-check')),
+        completed: track.getAttribute('data-course-sync-complete') === 'true' || Boolean(track.querySelector('.fa-check')),
       });
     }
     return lessons;
+  }
+
+  function paintLessonCheck(chapterId, completed) {
+    var id = chapterId ? String(chapterId) : '';
+    if (!id) {
+      var active = document.querySelector('.playlist a.track.track--active');
+      var activeHref = active ? (active.getAttribute('href') || '') : '';
+      var activeMatch = activeHref.match(/posts\/(\d+)/);
+      id = activeMatch ? activeMatch[1] : '';
+    }
+    if (!id) return;
+    playlistChecks[id] = Boolean(completed);
+    applyPlaylistChecks();
+  }
+
+  function applyPlaylistChecks() {
+    var root = playlistRoot() || document.querySelector('.playlist');
+    if (!root) return;
+    var tracks = root.querySelectorAll('a.track');
+    for (var index = 0; index < tracks.length; index += 1) {
+      var track = tracks[index];
+      if (track.classList.contains('track--more') || track.querySelector('.track__more')) continue;
+      var href = track.getAttribute('href') || '';
+      var postMatch = href.match(/posts\/(\d+)/);
+      var id = postMatch ? postMatch[1] : '';
+      if (!id || !Object.prototype.hasOwnProperty.call(playlistChecks, id)) continue;
+      var completed = playlistChecks[id];
+      var slot = track.querySelector('.media-right');
+      if (!slot) {
+        slot = document.createElement('div');
+        slot.className = 'media-right media-middle';
+        track.appendChild(slot);
+      }
+      var hasCheck = Boolean(slot.querySelector('.fa-check'));
+      if (completed) {
+        track.setAttribute('data-course-sync-complete', 'true');
+        if (!hasCheck) {
+          slot.innerHTML = '<div class="progress__icon"><i class="fa fa-check" aria-hidden="true"></i></div>';
+        }
+      } else if (hasCheck || track.getAttribute('data-course-sync-complete') === 'true') {
+        track.removeAttribute('data-course-sync-complete');
+        slot.innerHTML = '';
+      }
+    }
+  }
+
+  function watchPlaylistChecks() {
+    if (playlistCheckObserver) playlistCheckObserver.disconnect();
+    var root = document.querySelector('.player__playlist') || document.querySelector('.playlist');
+    if (!root || typeof MutationObserver !== 'function') return;
+    playlistCheckObserver = new MutationObserver(function () {
+      applyPlaylistChecks();
+      var current = document.querySelector('.player__playlist') || document.querySelector('.playlist');
+      if (current && current !== root && !root.contains(current)) {
+        root = current;
+        playlistCheckObserver.disconnect();
+        playlistCheckObserver.observe(root, { childList: true, subtree: true });
+      }
+    });
+    playlistCheckObserver.observe(root, { childList: true, subtree: true });
+    applyPlaylistChecks();
   }
 
   function findWeek(person, weekNumber) {
@@ -363,6 +429,15 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-status.is-open{background:#fde8ee;color:#d15b78;}'
       + '#course-sync-modal .course-sync-status.is-done{background:#e8f7ee;color:#1f8a4c;}'
       + '#course-sync-modal .course-sync-card-partner .course-sync-close{margin:18px 0 0 auto;display:block;min-width:108px;padding:10px 22px;background:#7a3048;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-lessons{max-height:min(240px,32vh);overflow:auto;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;margin-top:18px;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-actions button{margin:0;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-back{margin-right:auto;background:#fff;color:#7a3048;border:1px solid #e7c9d3;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-resync{background:#fff;color:#7a3048;border:1px solid #e7c9d3;}'
+      + '#course-sync-modal .course-sync-card-wait .course-sync-close{margin:0;display:inline-block;}'
+      + '#course-sync-modal .course-sync-sync-note{margin:10px 0 0;font-size:12px;line-height:1.4;color:#6f6562;text-align:right;}'
+      + '#course-sync-modal .course-sync-sync-note.is-error{color:#d32f2f;font-weight:600;}'
+      + '#course-sync-modal button:disabled{opacity:.65;cursor:wait;}'
       + '#course-sync-modal .course-sync-card-email .course-sync-hero{display:flex;flex-direction:column;}'
       + '#course-sync-modal .course-sync-card-email .course-sync-together{margin-top:auto;}'
       + '#course-sync-modal .course-sync-card-email .course-sync-panel{padding:28px 28px 22px 24px;overflow:auto;}'
@@ -386,6 +461,8 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-card-stuck h2{font-size:28px;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-lead{margin:0 0 16px;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-warn{margin-top:0;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-back{display:inline-block;margin-top:18px;background:#7a3048;color:#fff;}'
+      + '#course-sync-modal .course-sync-card-stuck .course-sync-sync-note{text-align:left;}'
       + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
@@ -395,6 +472,20 @@ var CourseApi = (function () {
     document.body.appendChild(modal);
     modal.addEventListener('click', function (event) {
       if (modal.classList.contains('is-locked')) event.stopPropagation();
+      var node = event.target;
+      if (node && node.nodeType !== 1) node = node.parentElement;
+      if (!node || !node.closest) return;
+      var back = node.closest('.course-sync-back');
+      if (back) {
+        event.preventDefault();
+        goToPreviousWeek(back);
+        return;
+      }
+      var resync = node.closest('.course-sync-resync');
+      if (resync) {
+        event.preventDefault();
+        refreshPartnerWait(true);
+      }
     });
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && modal.classList.contains('is-locked')) {
@@ -508,6 +599,7 @@ var CourseApi = (function () {
 
   function showModuleLocked(moduleName, lessons) {
     if (stuckModalOpen()) return;
+    stopPartnerWaitPoll();
     var modal = ensureModal();
     var items = lessons || [];
     var total = items.length;
@@ -546,15 +638,13 @@ var CourseApi = (function () {
     revealModal(modal);
   }
 
-  function showPartnerWait(label, person) {
-    if (stuckModalOpen()) return;
-    var modal = ensureModal();
-    var role = label || 'partner';
-    var titleRole = role.charAt(0).toUpperCase() + role.slice(1);
-    var chapters = person && person.chapters ? person.chapters : [];
-    var total = Number(person && person.totalChapters || 0) || chapters.length;
-    var done = Number(person && person.completedChapters || 0);
-    if (!person || person.completedChapters == null) {
+  function partnerWaitModel(state) {
+    var role = (state && state.label) || 'partner';
+    var person = state && state.person ? state.person : {};
+    var chapters = person.chapters || [];
+    var total = Number(person.totalChapters || 0) || chapters.length;
+    var done = Number(person.completedChapters || 0);
+    if (person.completedChapters == null) {
       done = chapters.filter(function (chapter) { return chapter.completed; }).length;
     }
     var remaining = Math.max(0, total - done);
@@ -568,27 +658,392 @@ var CourseApi = (function () {
         + (finished ? '&#10003; Done' : '&#9675; Not done')
         + '</span></li>';
     }).join('');
+    return { role: role, total: total, done: done, remaining: remaining, percent: percent, rows: rows };
+  }
+
+  function remainingCopy(model) {
+    return 'Your ' + model.role + ' still needs to complete ' + model.remaining + ' chapter' + (model.remaining === 1 ? '' : 's') + ' from this week.';
+  }
+
+  function renderPartnerWait(state) {
+    var modal = ensureModal();
+    var model = partnerWaitModel(state);
+    var titleRole = model.role.charAt(0).toUpperCase() + model.role.slice(1);
     var card = modal.querySelector('.course-sync-card');
-    card.className = 'course-sync-card course-sync-card-partner';
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-wait';
     card.innerHTML = ''
       + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + '<div class="course-sync-split">'
       + '<div class="course-sync-hero">'
       + modalImage('partner-wait.png')
-      + '<h2>Wait for your ' + escapeHtml(role) + ' to complete</h2>'
-      + '<p class="course-sync-lead">Your ' + escapeHtml(role) + ' is currently working on the remaining chapters. Once they complete these, the next week will be unlocked for both of you.</p>'
+      + '<h2>Wait for your ' + escapeHtml(model.role) + ' to complete</h2>'
+      + '<p class="course-sync-lead">Your ' + escapeHtml(model.role) + ' is currently working on the remaining chapters. Once they complete these, the next week will be unlocked for both of you.</p>'
       + '<div class="course-sync-together"><span class="course-sync-people"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 18c1-3 3-4 4-4s3 1 4 4M12 18c1-3 3-4 4-4s3 1 4 4"/></svg></span><div><strong>You\'re learning together</strong><span>Both of you need to complete the current week to unlock the next set of lessons.</span></div></div>'
       + '</div>'
       + '<div class="course-sync-panel">'
-      + '<div class="course-sync-panel-head"><div><h3>' + escapeHtml(titleRole) + '\'s Remaining Chapters</h3><p>Your ' + escapeHtml(role) + ' still needs to complete ' + remaining + ' chapter' + (remaining === 1 ? '' : 's') + ' from this week.</p></div>'
-      + '<div class="course-sync-ring" style="--p:' + percent + '"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
-      + '<ul class="course-sync-lessons">' + rows + '</ul>'
+      + '<div class="course-sync-panel-head"><div><h3>' + escapeHtml(titleRole) + '\'s Remaining Chapters</h3><p class="course-sync-remaining">' + escapeHtml(remainingCopy(model)) + '</p></div>'
+      + '<div class="course-sync-ring" style="--p:' + model.percent + '"><span><b>' + model.done + '/' + model.total + '</b><small>Completed</small></span></div></div>'
+      + '<ul class="course-sync-lessons">' + model.rows + '</ul>'
+      + '<div class="course-sync-actions">'
+      + '<button type="button" class="course-sync-back">Back to previous week</button>'
+      + '<button type="button" class="course-sync-resync">Resync status</button>'
       + '<button type="button" class="course-sync-close">Close</button>'
+      + '</div>'
+      + '<p class="course-sync-sync-note" aria-live="polite">Status checks every minute.</p>'
       + '</div></div>';
     card.querySelector('.course-sync-x').onclick = function () { hideModal(modal); };
     card.querySelector('.course-sync-close').onclick = function () { hideModal(modal); };
+    var back = card.querySelector('.course-sync-back');
+    var previousWeek = Number(state && state.weekNumber) - 1;
+    if (back && previousWeek >= 1) back.setAttribute('data-week', String(previousWeek));
     modal.classList.remove('is-locked');
     revealModal(modal);
+  }
+
+  function softUpdatePartnerWait(state) {
+    var card = document.querySelector('#course-sync-modal .course-sync-card-wait');
+    if (!card) return false;
+    var model = partnerWaitModel(state);
+    var remaining = card.querySelector('.course-sync-remaining');
+    if (remaining) remaining.textContent = remainingCopy(model);
+    var ring = card.querySelector('.course-sync-ring');
+    if (ring) {
+      ring.style.setProperty('--p', String(model.percent));
+      var count = ring.querySelector('b');
+      if (count) count.textContent = model.done + '/' + model.total;
+    }
+    var list = card.querySelector('.course-sync-lessons');
+    if (list) list.innerHTML = model.rows;
+    return true;
+  }
+
+  function showPartnerWait(label, person, context) {
+    if (stuckModalOpen()) return;
+    partnerWaitState = {
+      label: label || 'partner',
+      person: person || {},
+      weekNumber: context && context.weekNumber ? Number(context.weekNumber) : currentWeekNumber(),
+      nextHref: context && context.nextHref ? context.nextHref : nextModuleHref(playlistRoot()),
+    };
+    renderPartnerWait(partnerWaitState);
+    startPartnerWaitPoll();
+  }
+
+  function categoryIdFromHref(href) {
+    var match = String(href || '').match(/categories\/(\d+)/);
+    return match ? match[1] : '';
+  }
+
+  function currentCategoryId() {
+    var fromPath = categoryIdFromHref(window.location.pathname);
+    if (fromPath) return fromPath;
+    var active = document.querySelector('a.track.track--active');
+    return categoryIdFromHref(active && (active.getAttribute('href') || ''));
+  }
+
+  function collectCategoryHrefs(root) {
+    if (!root || !root.querySelectorAll) return [];
+    var anchors = root.querySelectorAll('a[href*="/categories/"]');
+    var order = [];
+    var byId = {};
+    for (var index = 0; index < anchors.length; index += 1) {
+      var href = anchors[index].getAttribute('href') || '';
+      if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) continue;
+      var id = categoryIdFromHref(href);
+      if (!id) continue;
+      var isPost = /\/posts\/\d+/.test(href);
+      if (!byId[id]) {
+        byId[id] = { href: href, postHref: isPost ? href : '' };
+        order.push(id);
+      } else if (isPost && !byId[id].postHref) {
+        byId[id].postHref = href;
+      }
+    }
+    return order.map(function (id) {
+      return { id: id, href: byId[id].postHref || byId[id].href };
+    });
+  }
+
+  function previousWeekHrefFrom(root) {
+    var list = collectCategoryHrefs(root);
+    var current = currentCategoryId();
+    if (!current) return { href: '', foundCurrent: false };
+    for (var index = 0; index < list.length; index += 1) {
+      if (list[index].id === current) {
+        return { href: index > 0 ? list[index - 1].href : '', foundCurrent: true };
+      }
+    }
+    return { href: '', foundCurrent: false };
+  }
+
+  function explicitPreviousHref() {
+    var anchors = document.querySelectorAll('a');
+    for (var index = 0; index < anchors.length; index += 1) {
+      var label = anchors[index].textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+      if (label === 'previous module' || label === 'previous week') {
+        return anchors[index].getAttribute('href') || '';
+      }
+    }
+    return '';
+  }
+
+  function productOutlinePath() {
+    var match = window.location.pathname.match(/\/products\/[^/]+/);
+    return match ? match[0] : '';
+  }
+
+  function leaveFor(href) {
+    stopPartnerWaitPoll();
+    window.location.assign(href);
+  }
+
+  function outsideCategoryRoot() {
+    var holder = document.createElement('div');
+    var anchors = document.querySelectorAll('a[href*="/categories/"]');
+    var playlist = document.querySelector('.player__playlist') || document.querySelector('.playlist');
+    for (var index = 0; index < anchors.length; index += 1) {
+      var anchor = anchors[index];
+      if (playlist && playlist.contains(anchor)) continue;
+      if (anchor.closest && anchor.closest('#course-sync-modal')) continue;
+      var href = anchor.getAttribute('href') || '';
+      if (!href) continue;
+      var clone = document.createElement('a');
+      clone.setAttribute('href', href);
+      holder.appendChild(clone);
+    }
+    return holder;
+  }
+
+  function normalizeLabel(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function sameOriginPath(href) {
+    if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return '';
+    try {
+      var url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin) return '';
+      return url.pathname;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function targetFromButton(button) {
+    var weekNumber = button ? Number(button.getAttribute('data-week')) : 0;
+    if (!weekNumber) weekNumber = Math.max(1, currentWeekNumber() - 1);
+    return {
+      weekNumber: weekNumber,
+      chapterName: button ? (button.getAttribute('data-chapter-name') || '') : '',
+      chapterId: button ? (button.getAttribute('data-chapter-id') || '') : '',
+    };
+  }
+
+  function matchWeekLink(root, target) {
+    var found = { exact: '', lesson: '', category: '' };
+    if (!root || !root.querySelectorAll || !target) return found;
+    var weekNumber = Number(target.weekNumber) || 0;
+    var chapterId = target.chapterId ? String(target.chapterId) : '';
+    var chapterName = normalizeLabel(target.chapterName);
+    var anchors = root.querySelectorAll('a[href]');
+    for (var index = 0; index < anchors.length; index += 1) {
+      var href = anchors[index].getAttribute('href') || '';
+      if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) continue;
+      var text = normalizeLabel(anchors[index].textContent);
+      var postMatch = href.match(/posts\/(\d+)/);
+      var postId = postMatch ? postMatch[1] : '';
+      if (chapterId && postId === chapterId) found.exact = href;
+      if (!found.exact && chapterName && text === chapterName && postId) found.exact = href;
+      var weekMatch = text.match(/week\s+(\d+)/);
+      if (!weekNumber || !weekMatch || Number(weekMatch[1]) !== weekNumber) continue;
+      if (postId) found.lesson = found.lesson || href;
+      else if (/categories\/\d+/.test(href)) found.category = found.category || href;
+    }
+    return found;
+  }
+
+  function hrefForChapterId(html, chapterId) {
+    if (!chapterId) return '';
+    var source = String(html || '').replace(/\\\//g, '/');
+    var match = source.match(new RegExp('/products/[^"\'\\s<>]+/categories/\\d+/posts/' + chapterId + '\\b'));
+    return match ? match[0] : '';
+  }
+
+  function discoveryPaths() {
+    var paths = [];
+    var seen = {};
+    function add(href) {
+      var path = sameOriginPath(href);
+      if (!path || path === window.location.pathname || seen[path] || /\/posts\/\d+$/.test(path)) return;
+      seen[path] = true;
+      paths.push(path);
+    }
+    add(productOutlinePath());
+    var playlist = document.querySelector('.player__playlist') || document.querySelector('.playlist');
+    var anchors = document.querySelectorAll('a[href]');
+    for (var index = 0; index < anchors.length; index += 1) {
+      var anchor = anchors[index];
+      if (playlist && playlist.contains(anchor)) continue;
+      if (anchor.closest && anchor.closest('#course-sync-modal')) continue;
+      var href = anchor.getAttribute('href') || '';
+      if (href.indexOf('/products/') === -1 && href.indexOf('/categories/') === -1) continue;
+      add(href);
+    }
+    return paths;
+  }
+
+  function resolvePreviousWeekHref(target) {
+    var fallback = { lesson: '', category: '' };
+    function consider(root, html) {
+      var byId = hrefForChapterId(html, target.chapterId);
+      if (byId) return byId;
+      var found = matchWeekLink(root, target);
+      if (found.exact) return found.exact;
+      if (!fallback.lesson && found.lesson) fallback.lesson = found.lesson;
+      if (!fallback.category && found.category) fallback.category = found.category;
+      if (found.category) {
+        var categoryPath = sameOriginPath(found.category);
+        if (categoryPath && paths.indexOf(categoryPath) === -1 && categoryPath !== window.location.pathname) {
+          paths.push(categoryPath);
+        }
+      }
+      return '';
+    }
+    var paths = discoveryPaths();
+    var first = consider(document, '');
+    if (first) return Promise.resolve(first);
+    var cursor = 0;
+    function step() {
+      if (cursor >= paths.length || cursor >= 6) {
+        if (fallback.lesson) return Promise.resolve(fallback.lesson);
+        if (fallback.category) return Promise.resolve(fallback.category);
+        return Promise.reject(new Error('Previous week link was not found.'));
+      }
+      var path = paths[cursor];
+      cursor += 1;
+      return fetch(path, { credentials: 'same-origin', cache: 'no-store' }).then(function (response) {
+        if (!response.ok) throw new Error('skip');
+        return response.text();
+      }).then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var href = consider(doc, html);
+        if (href) return href;
+        return step();
+      }).catch(function (error) {
+        if (error && error.message === 'Previous week link was not found.') throw error;
+        return step();
+      });
+    }
+    return step();
+  }
+
+  function goToPreviousWeek(button) {
+    var target = targetFromButton(button);
+    if (target.weekNumber < 1) {
+      setSyncNote('This is the first week.', true);
+      return;
+    }
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Opening...';
+    }
+    resolvePreviousWeekHref(target).then(function (href) {
+      leaveFor(href);
+    }).catch(function (error) {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Back to previous week';
+      }
+      setSyncNote(error.message || 'Could not open the previous week.', true);
+    });
+  }
+
+  function setSyncNote(message, isError) {
+    var note = document.querySelector('#course-sync-modal .course-sync-sync-note');
+    if (!note) return;
+    note.hidden = !message;
+    note.textContent = message || '';
+    note.classList.toggle('is-error', Boolean(isError));
+  }
+
+  function setResyncButton(busy) {
+    var button = document.querySelector('#course-sync-modal .course-sync-card-wait .course-sync-resync');
+    if (!button) return;
+    button.disabled = Boolean(busy);
+    button.textContent = busy ? 'Syncing...' : 'Resync status';
+  }
+
+  function syncClock() {
+    return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function unwrapCourse(payload) {
+    if (payload && payload.partner) return payload;
+    if (payload && payload.data && payload.data.partner) return payload.data;
+    return payload || {};
+  }
+
+  function courseSyncRequest() {
+    if (kajabiUserId) return CourseApi.getCourse(kajabiUserId);
+    if (accountUserId) return request('/api/v1/course/sync?userId=' + encodeURIComponent(accountUserId));
+    return Promise.reject(new Error('Account is not linked yet.'));
+  }
+
+  function statusSyncRequest() {
+    var query = kajabiUserId
+      ? ('kajabiUserId=' + encodeURIComponent(kajabiUserId))
+      : ('userId=' + encodeURIComponent(accountUserId));
+    return request('/api/v1/status/sync?' + query);
+  }
+
+  function refreshPartnerWait(manual) {
+    if (!partnerWaitState) return Promise.resolve();
+    var requestId = ++partnerWaitRequest;
+    var state = partnerWaitState;
+    setResyncButton(true);
+    if (manual) setSyncNote('Syncing status...');
+    return Promise.all([
+      courseSyncRequest(),
+      statusSyncRequest().catch(function () { return null; }),
+    ]).then(function (results) {
+      if (requestId !== partnerWaitRequest || !partnerWaitState) return;
+      var course = unwrapCourse(results[0]);
+      var week = findWeek(course.partner, state.weekNumber);
+      if (week && week.completed) {
+        var nextHref = state.nextHref;
+        var weekNumber = state.weekNumber;
+        var userWeek = findWeek(course.user, weekNumber);
+        stopPartnerWaitPoll();
+        showWeekComplete(weekNumber, userWeek || week, nextHref);
+        return;
+      }
+      if (week && week.chapters && week.chapters.length) partnerWaitState.person = week;
+      if (course.synchronization && course.synchronization.otherRole) {
+        partnerWaitState.label = course.synchronization.otherRole;
+      }
+      if (!softUpdatePartnerWait(partnerWaitState)) renderPartnerWait(partnerWaitState);
+      setResyncButton(false);
+      setSyncNote('Status synced at ' + syncClock() + '.');
+    }).catch(function (error) {
+      if (requestId !== partnerWaitRequest || !partnerWaitState) return;
+      setResyncButton(false);
+      setSyncNote(error.message || 'Could not sync status.', true);
+    });
+  }
+
+  function startPartnerWaitPoll() {
+    if (partnerWaitTimer || !partnerWaitState) return;
+    partnerWaitTimer = window.setInterval(function () {
+      refreshPartnerWait(false);
+    }, 60000);
+  }
+
+  function stopPartnerWaitPoll() {
+    partnerWaitState = null;
+    partnerWaitRequest += 1;
+    if (!partnerWaitTimer) return;
+    window.clearInterval(partnerWaitTimer);
+    partnerWaitTimer = null;
   }
 
   function finishArt() {
@@ -611,6 +1066,7 @@ var CourseApi = (function () {
   }
 
   function showWeekComplete(weekNumber, person, nextHref) {
+    stopPartnerWaitPoll();
     if (stuckModalOpen()) return;
     var modal = ensureModal();
     var week = Number(weekNumber) || 1;
@@ -659,10 +1115,12 @@ var CourseApi = (function () {
     revealModal(modal);
   }
 
-  function showPartnerStuck(chapterName) {
+  function showPartnerStuck(chapter) {
+    stopPartnerWaitPoll();
     var modal = ensureModal();
     if (modal.classList.contains('is-open') && modal.querySelector('.course-sync-card-email')) return;
-    var name = chapterName || 'the previous chapter';
+    var info = typeof chapter === 'string' ? { chapterName: chapter, weekNumber: Math.max(1, currentWeekNumber() - 1), chapterId: '' } : (chapter || {});
+    var name = info.chapterName || 'the previous chapter';
     var card = modal.querySelector('.course-sync-card');
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-stuck';
     card.innerHTML = ''
@@ -674,13 +1132,20 @@ var CourseApi = (function () {
       + '<h2>Progress was not saved</h2>'
       + '<p class="course-sync-lead">Your partner unmarked the completed progress of the previous week.</p>'
       + '<div class="course-sync-warn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div><strong>It looks like they are still looking at ' + escapeHtml(name) + '.</strong><span>This week stays closed until they finish that chapter again.</span></div></div>'
+      + '<button type="button" class="course-sync-back">Back to previous week</button>'
+      + '<p class="course-sync-sync-note" aria-live="polite" hidden></p>'
       + '</div></div>';
+    var back = card.querySelector('.course-sync-back');
+    if (info.weekNumber) back.setAttribute('data-week', String(info.weekNumber));
+    if (info.chapterId) back.setAttribute('data-chapter-id', String(info.chapterId));
+    if (info.chapterName) back.setAttribute('data-chapter-name', info.chapterName);
     modal.classList.add('is-locked');
     revealModal(modal);
   }
 
   function showModal(title, message, names) {
     if (stuckModalOpen()) return document.createElement('div');
+    stopPartnerWaitPoll();
     var modal = ensureModal();
     resetCard(modal);
     modal.querySelector('h2').textContent = title;
@@ -728,6 +1193,7 @@ var CourseApi = (function () {
 
   function hideModal(modal) {
     if (modal.querySelector('.course-sync-card-stuck')) return;
+    if (modal.querySelector('.course-sync-card-wait')) stopPartnerWaitPoll();
     modal.style.setProperty('display', 'none', 'important');
     modal.classList.remove('is-open', 'is-locked');
     document.documentElement.style.removeProperty('overflow');
@@ -735,6 +1201,7 @@ var CourseApi = (function () {
   }
 
   function showEmailModal() {
+    stopPartnerWaitPoll();
     var modal = ensureModal();
     if (modal.classList.contains('is-locked') && modal.classList.contains('is-open')) return;
     var card = resetCard(modal);
@@ -980,7 +1447,10 @@ var CourseApi = (function () {
         var label = otherRole(course);
         var waiting = !(update.partner && update.partner.completed);
         if (waiting) {
-          showPartnerWait(label, week || update.partner);
+          showPartnerWait(label, week || update.partner, {
+            weekNumber: update.weekNumber,
+            nextHref: nextModuleHref(playlistRoot()),
+          });
         } else {
           showWeekComplete(update.weekNumber, week || update.user, nextModuleHref(playlistRoot()));
         }
@@ -997,16 +1467,24 @@ var CourseApi = (function () {
   }
 
   function partnerStuckChapter(course, weekNumber) {
-    if (!course || weekNumber < 2) return '';
+    if (!course || weekNumber < 2) return null;
     for (var week = 1; week < weekNumber; week += 1) {
       var userWeek = findWeek(course.user, week);
       var partnerWeek = findWeek(course.partner, week);
       if (!userWeek || !userWeek.completed) continue;
       if (!partnerWeek || partnerWeek.completed) continue;
-      var names = incompleteNames(partnerWeek);
-      return names.length ? names[0] : ('Week ' + week);
+      var chapters = partnerWeek.chapters || [];
+      for (var index = 0; index < chapters.length; index += 1) {
+        if (chapters[index].completed) continue;
+        return {
+          chapterName: chapters[index].chapterName || ('Week ' + week),
+          chapterId: chapters[index].chapterId || '',
+          weekNumber: week,
+        };
+      }
+      return { chapterName: 'Week ' + week, chapterId: '', weekNumber: week };
     }
-    return '';
+    return null;
   }
 
   function isWeekLocked(error) {
@@ -1024,9 +1502,9 @@ var CourseApi = (function () {
     var week = weekNumber || currentWeekNumber();
     if (!kajabiUserId || week < 2) return Promise.resolve(false);
     return CourseApi.getCourse(kajabiUserId).then(function (course) {
-      var chapterName = partnerStuckChapter(course, week);
-      if (!chapterName) return false;
-      showPartnerStuck(chapterName);
+      var stuck = partnerStuckChapter(course, week);
+      if (!stuck || !stuck.chapterName) return false;
+      showPartnerStuck(stuck);
       return true;
     }).catch(function () {
       return false;
@@ -1049,10 +1527,14 @@ var CourseApi = (function () {
     if (weekNumber >= 2) openPartnerStuck(weekNumber);
     if (!isLessonPage()) return;
     watchLesson();
+    watchPlaylistChecks();
     var override = pendingCompletion;
     pendingCompletion = null;
     syncVisibleProgress(override, Boolean(override)).catch(function (error) {
-      if (override && !isMissingIdentity(error)) reportProgressError(error, 'Progress was not saved');
+      if (override && !isMissingIdentity(error)) {
+        paintLessonCheck(override.chapterId, !override.completed);
+        reportProgressError(error, 'Progress was not saved');
+      }
     });
   }
 
@@ -1093,8 +1575,12 @@ var CourseApi = (function () {
       return;
     }
     var completed = !control || control.getAttribute('data-post-completion-toggle') !== 'true';
+    paintLessonCheck(lesson.chapterId, completed);
     syncVisibleProgress({ chapterId: lesson.chapterId, completed: completed }, true).catch(function (error) {
-      if (!isMissingIdentity(error)) reportProgressError(error, 'Progress was not saved');
+      if (!isMissingIdentity(error)) {
+        paintLessonCheck(lesson.chapterId, !completed);
+        reportProgressError(error, 'Progress was not saved');
+      }
     });
   }
 
@@ -1161,7 +1647,10 @@ var CourseApi = (function () {
             }),
           };
         }
-        showPartnerWait(label, person);
+        showPartnerWait(label, person, {
+          weekNumber: weekNumber,
+          nextHref: control.href || nextModuleHref(playlist),
+        });
         return;
       }
       showWeekComplete(weekNumber, update.user, control.href || nextModuleHref(playlist));
@@ -1199,7 +1688,10 @@ var CourseApi = (function () {
       watchPartnerInvite();
       return;
     }
-    if (isLessonPage()) watchLesson();
+    if (isLessonPage()) {
+      watchLesson();
+      watchPlaylistChecks();
+    }
     if (!ids.length) return;
     lookupKnownIdentity(ids, 0);
   }

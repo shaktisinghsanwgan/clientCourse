@@ -4,7 +4,7 @@ import { env } from '../config/env.js';
 let transport;
 
 export function isMailConfigured() {
-  return Boolean(env.SMTP_HOST && env.SMTP_FROM);
+  return Boolean(env.SMTP_HOST && env.SMTP_FROM && env.CLIENT_EMAIL);
 }
 
 function mailer() {
@@ -21,7 +21,7 @@ function mailer() {
   return transport;
 }
 
-export async function sendInactivityEmail({ to, inactiveUser, inactiveSince, days }) {
+export async function sendInactivityEmail({ inactiveUser, inactiveSince, days }) {
   if (!isMailConfigured()) {
     return { delivered: false, skipped: true };
   }
@@ -33,12 +33,12 @@ export async function sendInactivityEmail({ to, inactiveUser, inactiveSince, day
     `${name} has been inactive for one week.`,
     '',
     `${name} (${inactiveUser.email}) has not used the course since ${when}.`,
-    `This client has been inactive for more than ${days} days.`,
+    `They have been inactive for more than ${days} days.`,
   ].join('\n');
 
   await mailer().sendMail({
     from: env.SMTP_FROM,
-    to,
+    to: env.CLIENT_EMAIL,
     subject,
     text,
   });

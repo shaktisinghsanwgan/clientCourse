@@ -82,6 +82,9 @@ export const env = {
   get SMTP_FROM() {
     return optional('SMTP_FROM');
   },
+  get CLIENT_EMAIL() {
+    return optional('CLIENT_EMAIL').toLowerCase();
+  },
   get SMTP_SECURE() {
     const value = optional('SMTP_SECURE').toLowerCase();
     if (value === 'true') return true;

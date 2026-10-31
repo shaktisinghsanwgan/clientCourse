@@ -4,26 +4,6 @@ import { env } from '../config/env.js';
 import { inactivityThresholdMs } from './activity.service.js';
 import { sendInactivityEmail } from './mail.service.js';
 
-async function recipientFor(user) {
-  if (user.role === 'PRIMARY' && user.primaryPartnership) {
-    const partnership = user.primaryPartnership;
-    if (partnership.partnerUserId) {
-      const partner = await prisma.user.findUnique({ where: { id: partnership.partnerUserId } });
-      if (partner?.email) return partner.email;
-    }
-    if (partnership.partnerEmail) return partnership.partnerEmail;
-  }
-
-  if (user.role === 'PARTNER' && user.partnerPartnership) {
-    const primary = await prisma.user.findUnique({
-      where: { id: user.partnerPartnership.primaryUserId },
-    });
-    if (primary?.email) return primary.email;
-  }
-
-  return user.email;
-}
-
 export async function notifyInactiveUsers({
   now = new Date(),
   days = env.INACTIVITY_DAYS,
@@ -34,10 +14,6 @@ export async function notifyInactiveUsers({
     where: {
       status: 'ACTIVE',
       lastActivityAt: { lt: cutoff },
-    },
-    include: {
-      primaryPartnership: true,
-      partnerPartnership: true,
     },
   });
   const results = [];
@@ -56,7 +32,11 @@ export async function notifyInactiveUsers({
       continue;
     }
 
-    const recipientEmail = await recipientFor(user);
+    const recipientEmail = env.CLIENT_EMAIL;
+    if (!recipientEmail) {
+      results.push({ userId: Number(user.id), status: 'unconfigured' });
+      continue;
+    }
     let delivery;
     try {
       delivery = await send({
@@ -116,7 +96,7 @@ export async function notifyInactiveUsers({
   };
 
   if (summary.unconfigured > 0) {
-    console.warn('Inactivity emails were not sent because SMTP_HOST or SMTP_FROM is not configured');
+    console.warn('Inactivity emails were not sent because SMTP_HOST, SMTP_FROM, or CLIENT_EMAIL is not configured');
   }
 
   return summary;

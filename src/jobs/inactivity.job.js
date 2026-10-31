@@ -18,7 +18,7 @@ export function startInactivityCron() {
     try {
       const summary = await notifyInactiveUsers();
       console.log(
-        `Inactivity check finished: ${summary.checked} inactive, ${summary.notified} emailed, ${summary.skipped} already sent, ${summary.unconfigured} waiting for SMTP, ${summary.failed} failed`,
+        `Inactivity check finished: ${summary.checked} inactive, ${summary.notified} emailed, ${summary.skipped} already sent, ${summary.unconfigured} waiting for mail settings, ${summary.failed} failed`,
       );
     } catch (error) {
       console.error(`Inactivity check failed: ${error.message}`);
