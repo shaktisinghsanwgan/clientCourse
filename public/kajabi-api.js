@@ -1123,24 +1123,30 @@ var CourseApi = (function () {
     return !data.partnership;
   }
 
-  function inviteUrlFor(result) {
+  function storePurchaserForInvite(result, email) {
     var data = responseData(result);
-    var saved = savedPurchaser() || {};
-    var plan = knownPlan(saved.plan) || knownPlan(data.offerReference) || knownPlan(data.user && data.user.offerReference);
-    if (INVITE_PAGES[plan]) return { plan: plan, url: INVITE_PAGES[plan] };
-    if (saved.thankYou) return { plan: saved.plan || '', url: saved.thankYou };
-    return { plan: '', url: '' };
-  }
-
-  function rememberInvite(plan, url) {
+    var user = data.user || {};
     var existing = savedPurchaser() || {};
-    if (plan) existing.plan = plan;
-    if (url) existing.thankYou = url;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+    var plan = knownPlan(existing.plan) || knownPlan(data.offerReference) || knownPlan(user.offerReference);
+    var thankYou = INVITE_PAGES[plan] || existing.thankYou || '';
+    var record = {
+      id: user.id || data.userId || existing.id || '',
+      name: user.name || data.name || existing.name || '',
+      email: String(email || user.email || data.email || existing.email || '').trim().toLowerCase(),
+      token: data.token || existing.token || '',
+      role: user.role || data.role || existing.role || 'PRIMARY',
+      kajabiUserId: user.kajabiUserId || data.kajabiUserId || existing.kajabiUserId || '',
+      plan: plan,
+      offerId: existing.offerId || '',
+      thankYou: thankYou,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+    return record;
   }
 
-  function showAddPartnerModal(url) {
+  function showAddPartnerModal(result, email) {
     stopPartnerWaitPoll();
+    var saved = storePurchaserForInvite(result, email);
     var modal = ensureModal();
     var card = resetCard(modal);
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-email';
@@ -1151,26 +1157,28 @@ var CourseApi = (function () {
       + '<button type="button" class="course-sync-continue">Add your partner &#8594;</button>'
       + '</div>';
     var button = card.querySelector('button');
-    if (!url) {
-      card.querySelector('p').textContent = 'Your checkout plan was not saved in this browser. Finish checkout on this device, then add your partner.';
+    if (!saved.email || !saved.thankYou) {
+      card.querySelector('p').textContent = saved.email
+        ? 'Your checkout plan was not saved in this browser. Finish checkout on this device, then add your partner.'
+        : 'Your email was not saved in this browser. Enter the checkout email again.';
       button.disabled = true;
     } else {
       button.onclick = function () {
-        window.location.assign(url);
+        var latest = storePurchaserForInvite(result, email);
+        if (!latest.email || !latest.thankYou) return;
+        window.location.assign(latest.thankYou);
       };
     }
     modal.classList.add('is-locked');
     revealModal(modal);
   }
 
-  function continueAfterIdentity(result) {
+  function continueAfterIdentity(result, email) {
     if (!purchaserNeedsPartner(result)) {
       handleKnownUser();
       return;
     }
-    var invite = inviteUrlFor(result);
-    rememberInvite(invite.plan, invite.url);
-    showAddPartnerModal(invite.url);
+    showAddPartnerModal(result, email);
   }
 
   function showEmailModal() {
@@ -1227,7 +1235,7 @@ var CourseApi = (function () {
       CourseApi.bindAccount({ email: email, kajabiUserId: kajabiUserId }).then(function (result) {
         markIdentity(result, kajabiUserId);
         hideModal(modal);
-        continueAfterIdentity(result);
+        continueAfterIdentity(result, email);
       }).catch(function (error) {
         button.disabled = false;
         if (error.status === 404) {

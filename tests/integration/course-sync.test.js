@@ -54,7 +54,9 @@ describe('partner course synchronization', () => {
     const first = await registerPurchaser(JOHN);
     expect(first.status).toBe(201);
     const second = await registerPurchaser({ ...JOHN, name: 'John Updated' });
-    expect(second.status).toBe(200);
+    expect(second.status).toBe(201);
+    expect(second.body.data.user.name).toBe('John Updated');
+    expect(second.body.data.user.id).not.toBe(first.body.data.user.id);
     expect(await prisma.user.count()).toBe(1);
 
     const login = await signIn('john@example.com');
@@ -65,6 +67,44 @@ describe('partner course synchronization', () => {
     const me = await request(app).get('/api/v1/users/me').set(bearer(login.token));
     expect(me.status).toBe(200);
     expect(me.body.data.emailVerified).toBe(true);
+  });
+
+  it('clears progress and partner details when the same purchaser checks out again', async () => {
+    const first = await registerPurchaser(JOHN);
+    const john = await signIn(JOHN.email);
+    const linked = await linkJane(john.token);
+    expect(linked.status).toBe(200);
+    await signIn(JANE.email);
+
+    await prisma.courseChapter.create({
+      data: {
+        weekNumber: 1,
+        chapterId: 'repeat-checkout',
+        chapterName: 'Repeat checkout',
+        chapterOrder: 1,
+      },
+    });
+    const purchaser = await prisma.user.findUnique({ where: { email: JOHN.email } });
+    const partner = await prisma.user.findUnique({ where: { email: JANE.email } });
+    await prisma.chapterProgress.createMany({
+      data: [
+        { userId: purchaser.id, chapterId: 'repeat-checkout', completed: true },
+        { userId: partner.id, chapterId: 'repeat-checkout', completed: true },
+      ],
+    });
+
+    const again = await registerPurchaser({ ...JOHN, name: 'John Again' });
+    expect(again.status).toBe(201);
+    expect(again.body.data.user.id).not.toBe(first.body.data.user.id);
+    expect(again.body.data.partnership).toBeNull();
+    expect(await prisma.user.findUnique({ where: { email: JANE.email } })).toBeNull();
+    expect(await prisma.partner.count()).toBe(0);
+    expect(await prisma.chapterProgress.count()).toBe(0);
+    expect(await prisma.user.count()).toBe(1);
+
+    const fresh = await signIn(JOHN.email);
+    const relink = await linkJane(fresh.token);
+    expect(relink.status).toBe(200);
   });
 
   it('rejects client payment flags and does not call Kajabi when the API is not configured', async () => {

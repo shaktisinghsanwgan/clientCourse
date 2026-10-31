@@ -1,4 +1,6 @@
 (function () {
+  var BASE_URL = 'https://web-production-b4f12.up.railway.app';
+  var ADMIN_API_KEY = 'local-dev-admin-key';
   var STORAGE_KEY = 'courseSync.purchaser';
   var OFFERS = {
     x9qWfn6F: {
@@ -114,6 +116,71 @@
     rememberCheckoutPurchaser();
   }
 
+  function writePurchaser(record) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+    return record;
+  }
+
+  function saveRegistered(result, draft) {
+    var data = (result && result.data) || {};
+    var user = data.user || {};
+    return writePurchaser({
+      id: user.id || draft.id,
+      name: user.name || draft.name || '',
+      email: user.email || draft.email || '',
+      token: data.token || draft.token || '',
+      role: user.role || draft.role || 'PRIMARY',
+      kajabiUserId: user.kajabiUserId || draft.kajabiUserId || '',
+      plan: draft.plan || '',
+      offerId: draft.offerId || '',
+      thankYou: draft.thankYou || '',
+    });
+  }
+
+  function registerPurchaser(draft) {
+    if (!draft || !draft.name || !draft.email) return Promise.resolve(draft);
+    return fetch(BASE_URL + '/api/v1/users/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': ADMIN_API_KEY,
+      },
+      keepalive: true,
+      body: JSON.stringify({
+        name: draft.name,
+        email: draft.email,
+        offerReference: draft.plan,
+      }),
+    }).then(function (response) {
+      return response.text().then(function (text) {
+        var data = text ? JSON.parse(text) : null;
+        if (!response.ok) {
+          var error = new Error((data && data.message) || ('Request failed (' + response.status + ')'));
+          error.status = response.status;
+          throw error;
+        }
+        return saveRegistered(data, draft);
+      });
+    }).catch(function () {
+      return draft;
+    });
+  }
+
+  function isPayClick(event) {
+    var path = event && event.composedPath ? event.composedPath() : [];
+    var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
+    if (node) path = [node].concat(path);
+    for (var index = 0; index < path.length; index += 1) {
+      var item = path[index];
+      if (!item || item.nodeType !== 1 || !item.getAttribute) continue;
+      if (item.getAttribute('data-testid') === 'popup-submit-button') return true;
+      if (item.tagName === 'BUTTON' && item.type === 'submit' && item.closest && item.closest('.embedded-checkout, form.embedded-checkout__body')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function boot() {
     if (!currentOffer()) return;
     rememberCheckoutPurchaser();
@@ -121,10 +188,13 @@
     document.addEventListener('change', capture, true);
     window.setInterval(rememberCheckoutPurchaser, 1000);
     document.addEventListener('click', function (event) {
-      var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
-      if (!node || !node.closest) return;
-      if (!node.closest('[data-testid="popup-submit-button"]')) return;
-      rememberCheckoutPurchaser();
+      if (!isPayClick(event)) return;
+      registerPurchaser(rememberCheckoutPurchaser());
+    }, true);
+    document.addEventListener('submit', function (event) {
+      var form = event.target;
+      if (!form || !form.closest || !form.closest('.embedded-checkout')) return;
+      registerPurchaser(rememberCheckoutPurchaser());
     }, true);
   }
 

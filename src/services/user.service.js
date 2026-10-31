@@ -61,6 +61,26 @@ function verificationFields(verification, existing) {
   return fields;
 }
 
+async function clearPurchaserHistory(tx, purchaserId) {
+  const partnership = await tx.partner.findUnique({ where: { primaryUserId: purchaserId } });
+  const partnerUserId = partnership?.partnerUserId || null;
+  const userIds = [purchaserId, partnerUserId].filter(Boolean);
+
+  await tx.chapterProgress.deleteMany({ where: { userId: { in: userIds } } });
+  await tx.progress.deleteMany({ where: { userId: { in: userIds } } });
+  await tx.inactivityNotice.deleteMany({ where: { userId: { in: userIds } } });
+  if (partnership) {
+    await tx.partner.delete({ where: { id: partnership.id } });
+  }
+  if (partnerUserId) {
+    const partnerUser = await tx.user.findUnique({ where: { id: partnerUserId } });
+    if (partnerUser?.role === 'PARTNER') {
+      await tx.user.delete({ where: { id: partnerUserId } });
+    }
+  }
+  await tx.user.delete({ where: { id: purchaserId } });
+}
+
 export async function registerPurchaser(input) {
   const email = normalizeEmail(input.email);
   const verification = await verifyPurchaseByEmail(email, input.kajabiCustomerId);
@@ -72,8 +92,7 @@ export async function registerPurchaser(input) {
   if (existing && existing.role !== 'PRIMARY') {
     throw new ApiError(409, 'Conflicting Kajabi identity', 'IDENTITY_CONFLICT');
   }
-
-  const fields = verificationFields(verification, existing);
+  const fields = verificationFields(verification, null);
   const plan = checkoutPlan(input.offerReference);
   if (plan) fields.offerReference = plan;
 
@@ -88,12 +107,13 @@ export async function registerPurchaser(input) {
     ...fields,
   };
 
-  const user = existing
-    ? await prisma.user.update({ where: { id: existing.id }, data })
-    : await prisma.user.create({ data });
+  const user = await prisma.$transaction(async (tx) => {
+    if (existing) await clearPurchaserHistory(tx, existing.id);
+    return tx.user.create({ data });
+  });
 
   return {
-    created: !existing,
+    created: true,
     ...(await authPayload(user)),
     kajabi: {
       configured: verification.configured,
