@@ -15,5 +15,6 @@ export function toPublicUser(user) {
     status: user.status,
     emailVerified: user.emailVerified,
     kajabiUserId: user.kajabiUserId,
+    offerReference: user.offerReference || null,
   };
 }

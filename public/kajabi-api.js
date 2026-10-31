@@ -68,123 +68,29 @@ var CourseApi = (function () {
   function savePurchaser(result) {
     var data = result.data || result;
     var user = data.user || {};
+    var existing = savedPurchaser() || {};
     var record = {
-      id: user.id || data.userId,
-      name: user.name || data.name,
-      email: user.email || data.email,
-      token: data.token || '',
-      role: user.role || data.role || '',
-      kajabiUserId: user.kajabiUserId || data.kajabiUserId || readCookie('rl_user_id'),
+      id: user.id || data.userId || existing.id,
+      name: user.name || data.name || existing.name || '',
+      email: user.email || data.email || existing.email || '',
+      token: data.token || existing.token || '',
+      role: user.role || data.role || existing.role || '',
+      kajabiUserId: user.kajabiUserId || data.kajabiUserId || existing.kajabiUserId || readCookie('rl_user_id'),
+      plan: existing.plan || knownPlan(user.offerReference) || knownPlan(data.offerReference) || '',
+      offerId: existing.offerId || '',
+      thankYou: existing.thankYou || '',
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
     return record;
   }
 
-  function fieldValue(selector) {
-    var field = document.querySelector(selector);
-    return field && field.value ? field.value.trim() : '';
-  }
-
-  function memberFromPage() {
-    return {
-      name: fieldValue('#member_name, input[name="member[name]"]'),
-      email: fieldValue('#member_email, input[name="member[email]"]'),
-    };
-  }
-
-  function isSettingsPage() {
-    return /\/settings\/account/.test(window.location.pathname);
-  }
-
-  function isThankYouPage() {
-    return /thank[-_ ]?you/i.test(window.location.pathname);
+  function knownPlan(value) {
+    return value === 'one_time' || value === 'eight_month' ? value : '';
   }
 
   function isMissingIdentity(error) {
     var code = error && error.body && error.body.errorCode;
     return Boolean(error && (error.status === 404 || code === 'IDENTITY_NOT_FOUND' || /user not found/i.test(error.message || '')));
-  }
-
-  function isCheckoutPage() {
-    return /\/offers\/[^/]+\/checkout/i.test(window.location.pathname);
-  }
-
-  function checkoutEmail() {
-    var custom = document.querySelector('pds-input[component-id="email"]');
-    if (custom && custom.value) return String(custom.value).trim();
-    if (custom && custom.shadowRoot) {
-      var inner = custom.shadowRoot.querySelector('input');
-      if (inner && inner.value) return inner.value.trim();
-    }
-    var input = document.querySelector('input[type="email"]');
-    return input && input.value ? input.value.trim() : '';
-  }
-
-  function checkoutName() {
-    var input = document.querySelector('#name');
-    return input && input.value ? input.value.trim() : '';
-  }
-
-  function rememberCheckoutPurchaser() {
-    var name = checkoutName();
-    var email = checkoutEmail();
-    if (!name && !email) return savedPurchaser();
-    var existing = savedPurchaser() || {};
-    var next = {
-      id: existing.id,
-      name: name || existing.name || '',
-      email: email || existing.email || '',
-      token: existing.token,
-      role: existing.role,
-      kajabiUserId: existing.kajabiUserId,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    return next;
-  }
-
-  function watchCheckout() {
-    function capture(event) {
-      var path = event && event.composedPath ? event.composedPath() : [];
-      var name = '';
-      var email = '';
-      for (var index = 0; index < path.length; index += 1) {
-        var node = path[index];
-        if (!node || node.tagName !== 'INPUT' || !node.value) continue;
-        var host = null;
-        for (var hostIndex = index; hostIndex < path.length; hostIndex += 1) {
-          if (path[hostIndex] && path[hostIndex].tagName === 'PDS-INPUT') {
-            host = path[hostIndex];
-            break;
-          }
-        }
-        if (node.id === 'name' || node.getAttribute('testid') === 'name-input') name = node.value.trim();
-        if (node.type === 'email' || (host && host.getAttribute('component-id') === 'email')) email = node.value.trim();
-      }
-      if (name || email) {
-        var existing = savedPurchaser() || {};
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          id: existing.id,
-          name: name || checkoutName() || existing.name || '',
-          email: email || checkoutEmail() || existing.email || '',
-          token: existing.token,
-          role: existing.role,
-          kajabiUserId: existing.kajabiUserId,
-        }));
-      }
-      rememberCheckoutPurchaser();
-    }
-    document.addEventListener('input', capture, true);
-    document.addEventListener('change', capture, true);
-    window.setInterval(rememberCheckoutPurchaser, 1000);
-    document.addEventListener('click', function (event) {
-      var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
-      if (!node || !node.closest) return;
-      var button = node.closest('[data-testid="popup-submit-button"]');
-      if (!button) return;
-      var draft = rememberCheckoutPurchaser();
-      if (!draft || !draft.name || !draft.email) return;
-      CourseApi.registerPurchaser({ name: draft.name, email: draft.email }, { keepalive: true }).then(savePurchaser);
-    }, true);
   }
 
   function isLessonPage() {
@@ -1200,6 +1106,73 @@ var CourseApi = (function () {
     document.body.style.removeProperty('overflow');
   }
 
+  var INVITE_PAGES = {
+    one_time: 'https://www.reignitesex.com/invite-your-partner-one-time-payment',
+    eight_month: 'https://www.reignitesex.com/invite-your-partner-8-monthly-payments',
+  };
+
+  function responseData(result) {
+    return (result && result.data) || result || {};
+  }
+
+  function purchaserNeedsPartner(result) {
+    var data = responseData(result);
+    var role = (data.user && data.user.role) || data.role || '';
+    var purchaser = data.isPurchaser === true || role === 'PRIMARY';
+    if (!purchaser || data.isPartner === true || role === 'PARTNER') return false;
+    return !data.partnership;
+  }
+
+  function inviteUrlFor(result) {
+    var data = responseData(result);
+    var saved = savedPurchaser() || {};
+    var plan = knownPlan(saved.plan) || knownPlan(data.offerReference) || knownPlan(data.user && data.user.offerReference);
+    if (INVITE_PAGES[plan]) return { plan: plan, url: INVITE_PAGES[plan] };
+    if (saved.thankYou) return { plan: saved.plan || '', url: saved.thankYou };
+    return { plan: '', url: '' };
+  }
+
+  function rememberInvite(plan, url) {
+    var existing = savedPurchaser() || {};
+    if (plan) existing.plan = plan;
+    if (url) existing.thankYou = url;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+  }
+
+  function showAddPartnerModal(url) {
+    stopPartnerWaitPoll();
+    var modal = ensureModal();
+    var card = resetCard(modal);
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-email';
+    card.innerHTML = ''
+      + '<div class="course-sync-panel" style="padding:28px 28px 24px">'
+      + '<h2>Add your partner</h2>'
+      + '<p class="course-sync-lead">Your course progress syncs with your partner. Add their name and email so both of you can continue together.</p>'
+      + '<button type="button" class="course-sync-continue">Add your partner &#8594;</button>'
+      + '</div>';
+    var button = card.querySelector('button');
+    if (!url) {
+      card.querySelector('p').textContent = 'Your checkout plan was not saved in this browser. Finish checkout on this device, then add your partner.';
+      button.disabled = true;
+    } else {
+      button.onclick = function () {
+        window.location.assign(url);
+      };
+    }
+    modal.classList.add('is-locked');
+    revealModal(modal);
+  }
+
+  function continueAfterIdentity(result) {
+    if (!purchaserNeedsPartner(result)) {
+      handleKnownUser();
+      return;
+    }
+    var invite = inviteUrlFor(result);
+    rememberInvite(invite.plan, invite.url);
+    showAddPartnerModal(invite.url);
+  }
+
   function showEmailModal() {
     stopPartnerWaitPoll();
     var modal = ensureModal();
@@ -1254,7 +1227,7 @@ var CourseApi = (function () {
       CourseApi.bindAccount({ email: email, kajabiUserId: kajabiUserId }).then(function (result) {
         markIdentity(result, kajabiUserId);
         hideModal(modal);
-        handleKnownUser();
+        continueAfterIdentity(result);
       }).catch(function (error) {
         button.disabled = false;
         if (error.status === 404) {
@@ -1264,111 +1237,6 @@ var CourseApi = (function () {
         } else {
           showEmailError(error.message);
         }
-      });
-    };
-  }
-
-  function inviteFields(form) {
-    var nameInput = form.querySelector('#form_submission_name, input[name="form_submission[name]"]');
-    var emailInput = form.querySelector('#form_submission_email, input[name="form_submission[email]"]');
-    var permission = form.querySelector('input[type="checkbox"][name="form_submission[custom_1]"]');
-    return {
-      name: nameInput && nameInput.value ? nameInput.value.trim() : '',
-      email: emailInput && emailInput.value ? emailInput.value.trim() : '',
-      allowed: !permission || permission.checked,
-    };
-  }
-
-  function linkSavedPurchaser(partnerName, partnerEmail) {
-    var purchaser = savedPurchaser();
-    if (!purchaser || !purchaser.email) {
-      return Promise.reject(new Error('Your checkout details were not saved in this browser. Finish checkout on this device, then send the invite.'));
-    }
-    var ready = purchaser.id
-      ? Promise.resolve(purchaser)
-      : CourseApi.registerPurchaser({ name: purchaser.name, email: purchaser.email }).then(savePurchaser);
-    return ready.then(function (record) {
-      return CourseApi.linkPartner({
-        partnerName: partnerName,
-        partnerEmail: partnerEmail,
-        purchaserUserId: record.id,
-        purchaserEmail: record.email,
-        token: record.token,
-      });
-    });
-  }
-
-  function watchPartnerInvite() {
-    var emailInput = document.querySelector('#form_submission_email, input[name="form_submission[email]"]');
-    var form = emailInput && emailInput.form;
-    if (!form) {
-      showPartnerModal();
-      return;
-    }
-    form.addEventListener('submit', function (event) {
-      if (form.getAttribute('data-course-sync-linked') === 'true') return;
-      var fields = inviteFields(form);
-      if (!fields.name || !fields.email || !fields.allowed) return;
-      event.preventDefault();
-      event.stopPropagation();
-      var button = form.querySelector('#form-button, button[type="submit"]');
-      if (button) button.disabled = true;
-      linkSavedPurchaser(fields.name, fields.email).then(function () {
-        form.setAttribute('data-course-sync-linked', 'true');
-        if (button) button.disabled = false;
-        HTMLFormElement.prototype.submit.call(form);
-      }).catch(function (error) {
-        if (button) button.disabled = false;
-        showModal('Could not link your partner', error.message);
-      });
-    }, true);
-  }
-
-  function showPartnerModal() {
-    var purchaser = savedPurchaser();
-    if (!purchaser || !purchaser.email) {
-      showModal('Complete checkout first', 'Your name and email were not saved from checkout in this browser. Finish checkout on this device, then add your partner.');
-      return;
-    }
-    var body = showModal('Add your partner', 'Enter your partner’s name and email. Their progress stays linked to your purchase.');
-    body.innerHTML = ''
-      + '<label for="course-sync-partner-name">Partner name</label><input id="course-sync-partner-name">'
-      + '<label for="course-sync-partner-email">Partner email</label><input id="course-sync-partner-email" type="email">'
-      + '<p class="course-sync-note" hidden></p>';
-    var button = document.querySelector('#course-sync-modal button');
-    button.textContent = 'Link partner';
-    button.onclick = function () {
-      var note = body.querySelector('.course-sync-note');
-      var partnerName = body.querySelector('#course-sync-partner-name').value.trim();
-      var partnerEmail = body.querySelector('#course-sync-partner-email').value.trim();
-      if (!partnerName || !partnerEmail) {
-        note.hidden = false;
-        note.textContent = 'Enter your partner’s name and email.';
-        return;
-      }
-      button.disabled = true;
-      var ready = purchaser.id
-        ? Promise.resolve(purchaser)
-        : CourseApi.registerPurchaser({ name: purchaser.name, email: purchaser.email }).then(function (created) {
-          purchaser = created;
-          return savePurchaser(created);
-        });
-      ready.then(function (record) {
-        return CourseApi.linkPartner({
-          partnerName: partnerName,
-          partnerEmail: partnerEmail,
-          purchaserUserId: record.id,
-          purchaserEmail: record.email,
-          token: record.token,
-        });
-      }).then(function () {
-        button.disabled = false;
-        showModal('Partner linked', 'Your partner can sign in with ' + partnerEmail + '. Their lessons will sync with yours.');
-        document.querySelector('#course-sync-modal button').textContent = 'Close';
-      }).catch(function (error) {
-        button.disabled = false;
-        note.hidden = false;
-        note.textContent = error.message;
       });
     };
   }
@@ -1667,7 +1535,7 @@ var CourseApi = (function () {
     }
     CourseApi.lookup(ids[index]).then(function (result) {
       markIdentity(result, ids[index]);
-      handleKnownUser();
+      continueAfterIdentity(result);
     }).catch(function (error) {
       if (isMissingIdentity(error)) {
         lookupKnownIdentity(ids, index + 1);
@@ -1678,16 +1546,8 @@ var CourseApi = (function () {
   }
 
   function boot() {
-    if (isCheckoutPage()) {
-      watchCheckout();
-      return;
-    }
     var ids = identityCandidates();
     kajabiUserId = ids[0] || '';
-    if (isThankYouPage()) {
-      watchPartnerInvite();
-      return;
-    }
     if (isLessonPage()) {
       watchLesson();
       watchPlaylistChecks();

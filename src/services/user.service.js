@@ -30,6 +30,11 @@ async function assertKajabiIdAvailable(kajabiUserId, email) {
   }
 }
 
+function checkoutPlan(value) {
+  if (value === 'one_time' || value === 'eight_month') return value;
+  return '';
+}
+
 function verificationFields(verification, existing) {
   const fields = {
     paymentStatus: existing?.paymentStatus || 'PENDING',
@@ -48,7 +53,7 @@ function verificationFields(verification, existing) {
   if (verification.paid) {
     fields.paymentStatus = 'PAID';
     fields.purchaseReference = verification.purchaseId;
-    fields.offerReference = verification.offerId;
+    fields.offerReference = checkoutPlan(existing?.offerReference) || verification.offerId;
     fields.paymentVerificationSource = 'kajabi_api';
     fields.paymentVerifiedAt = existing?.paymentVerifiedAt || new Date();
   }
@@ -69,6 +74,8 @@ export async function registerPurchaser(input) {
   }
 
   const fields = verificationFields(verification, existing);
+  const plan = checkoutPlan(input.offerReference);
+  if (plan) fields.offerReference = plan;
 
   const data = {
     name: input.name.trim(),
@@ -121,7 +128,7 @@ export async function syncAuthenticatedUser(user, input) {
   if (user.role === 'PRIMARY' && verification.paid && user.paymentStatus !== 'PAID') {
     data.paymentStatus = 'PAID';
     data.purchaseReference = verification.purchaseId;
-    data.offerReference = verification.offerId;
+    if (!checkoutPlan(user.offerReference)) data.offerReference = verification.offerId;
     data.paymentVerificationSource = 'kajabi_api';
     data.paymentVerifiedAt = new Date();
   }
@@ -231,7 +238,24 @@ export async function getUserByKajabiId(kajabiUserId) {
 }
 
 export async function verifyByKajabiUserId(kajabiUserId) {
-  return rolePayload(await getUserByKajabiId(kajabiUserId));
+  const user = await getUserByKajabiId(kajabiUserId);
+  const partnership = await prisma.partner.findFirst({
+    where: {
+      OR: [{ primaryUserId: user.id }, { partnerUserId: user.id }],
+    },
+  });
+  return {
+    ...rolePayload(user),
+    offerReference: user.offerReference || null,
+    partnership: partnership
+      ? {
+        id: Number(partnership.id),
+        status: partnership.status,
+        primaryUserId: Number(partnership.primaryUserId),
+        partnerUserId: partnership.partnerUserId ? Number(partnership.partnerUserId) : null,
+      }
+      : null,
+  };
 }
 
 function rolePayload(user) {
@@ -394,7 +418,7 @@ export async function applyVerifiedPurchaseWebhook(body) {
     kajabiUserId: verification.customer.id,
     paymentStatus: 'PAID',
     purchaseReference: verification.purchaseId,
-    offerReference: verification.offerId,
+    offerReference: checkoutPlan(existing?.offerReference) || verification.offerId,
     paymentVerificationSource: 'kajabi_api',
     paymentVerifiedAt: new Date(),
     lastActivityAt: new Date(),
