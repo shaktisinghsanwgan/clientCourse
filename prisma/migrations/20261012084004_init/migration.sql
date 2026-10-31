@@ -13,7 +13,7 @@ CREATE TABLE `users` (
     `payment_verification_source` VARCHAR(50) NULL,
     `payment_verified_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `users_kajabi_user_id_key`(`kajabi_user_id`),
     UNIQUE INDEX `users_email_key`(`email`),
@@ -31,7 +31,7 @@ CREATE TABLE `partners` (
     `partner_email` VARCHAR(255) NOT NULL,
     `status` ENUM('PENDING', 'ACTIVE') NOT NULL DEFAULT 'PENDING',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `partners_primary_user_id_key`(`primary_user_id`),
     UNIQUE INDEX `partners_partner_user_id_key`(`partner_user_id`),
@@ -49,7 +49,7 @@ CREATE TABLE `course_chapters` (
     `chapter_order` INTEGER NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `course_chapters_chapter_id_key`(`chapter_id`),
     INDEX `course_chapters_week_number_is_active_idx`(`week_number`, `is_active`),
@@ -67,7 +67,7 @@ CREATE TABLE `progress` (
     `completed` BOOLEAN NOT NULL DEFAULT false,
     `completed_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     INDEX `progress_week_number_idx`(`week_number`),
     UNIQUE INDEX `progress_user_id_week_number_key`(`user_id`, `week_number`),
@@ -82,7 +82,7 @@ CREATE TABLE `chapter_progress` (
     `completed` BOOLEAN NOT NULL DEFAULT false,
     `completed_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     INDEX `chapter_progress_chapter_id_idx`(`chapter_id`),
     UNIQUE INDEX `chapter_progress_user_id_chapter_id_key`(`user_id`, `chapter_id`),

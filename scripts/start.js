@@ -21,26 +21,73 @@ Then redeploy the API service.`);
 
 console.log(`Database ${redactMysqlUrl(databaseUrl)}`);
 
+const FAILED_INIT = '20261012084004_init';
+
 function run(command, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      stdio: 'inherit',
       env: process.env,
-      shell: true,
+      shell: process.platform === 'win32',
+    });
+    let output = '';
+    child.stdout.on('data', (chunk) => {
+      process.stdout.write(chunk);
+      output += chunk.toString();
+    });
+    child.stderr.on('data', (chunk) => {
+      process.stderr.write(chunk);
+      output += chunk.toString();
     });
     child.on('error', reject);
     child.on('exit', (code) => {
       if (code === 0) {
-        resolve();
+        resolve(output);
         return;
       }
-      reject(new Error(`${command} ${args.join(' ')} exited with ${code}`));
+      const error = new Error(`${command} ${args.join(' ')} exited with ${code}`);
+      error.output = output;
+      reject(error);
     });
   });
 }
 
+async function usersTableExists() {
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT TABLE_NAME AS tableName
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE() AND table_name = 'users'
+    `;
+    return rows.length > 0;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+async function deployMigrations() {
+  try {
+    await run('npx', ['prisma', 'migrate', 'deploy']);
+  } catch (error) {
+    const output = error.output || '';
+    if (!output.includes('P3009') || !output.includes(FAILED_INIT)) {
+      throw error;
+    }
+    const applied = await usersTableExists();
+    const flag = applied ? '--applied' : '--rolled-back';
+    console.log(
+      applied
+        ? 'Init migration is marked failed, but the users table already exists. Marking it applied and continuing.'
+        : 'Init migration failed before the tables were created. Clearing that record and applying it again.',
+    );
+    await run('npx', ['prisma', 'migrate', 'resolve', flag, FAILED_INIT]);
+    await run('npx', ['prisma', 'migrate', 'deploy']);
+  }
+}
+
 try {
-  await run('npx', ['prisma', 'migrate', 'deploy']);
+  await deployMigrations();
   await run('node', ['src/server.js']);
 } catch (error) {
   console.error(error.message);
