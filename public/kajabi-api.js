@@ -369,7 +369,21 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-card-stuck .course-sync-warn{margin-top:0;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-back{display:inline-block;margin-top:18px;background:#7a3048;color:#fff;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-sync-note{text-align:left;}'
-      + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}}';
+      + '#course-sync-modal .course-sync-card-invite{width:min(440px,100%);padding:18px 22px 20px;border-radius:28px;background:#fff;}'
+      + '#course-sync-modal .course-sync-card-invite h2{font-size:28px;text-align:center;margin:8px 0 8px;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-lead{text-align:center;margin:0 0 16px;color:#6d6468;}'
+      + '#course-sync-modal .course-sync-invite-art{display:flex;justify-content:center;margin:8px 0 4px;}'
+      + '#course-sync-modal .course-sync-invite-art svg{width:240px !important;height:168px !important;min-width:240px !important;min-height:168px !important;max-width:240px !important;max-height:168px !important;}'
+      + '#course-sync-modal .course-sync-invite-steps{margin:0;padding:16px 16px 6px;border-radius:18px;background:#fdecef;display:flex;flex-direction:column;gap:14px;}'
+      + '#course-sync-modal .course-sync-invite-steps li{display:flex;gap:12px;align-items:flex-start;margin:0;}'
+      + '#course-sync-modal .course-sync-invite-steps strong{display:block;margin:0 0 2px;color:#2a2326;font-size:15px;}'
+      + '#course-sync-modal .course-sync-invite-steps span{display:block;color:#6f6562;font-size:13px;line-height:1.4;}'
+      + '#course-sync-modal .course-sync-invite-icon{width:36px;height:36px;min-width:36px;border-radius:50%;background:#f8d5df;color:#c45c78;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-card-add h2,#course-sync-modal .course-sync-card-add .course-sync-lead{text-align:left;}'
+      + '#course-sync-modal .course-sync-card-add h2{margin:4px 28px 8px 0;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-invite-resync,#course-sync-modal .course-sync-card-invite .course-sync-invite-go{width:100%;margin-top:16px;border-radius:12px;padding:13px 16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-sync-note{text-align:center;}'
+      + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}#course-sync-modal .course-sync-card-invite h2{font-size:24px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
     modal.id = 'course-sync-modal';
@@ -471,10 +485,12 @@ var CourseApi = (function () {
       box.style.setProperty('display', 'block', 'important');
       box.style.setProperty('width', '100%', 'important');
       box.style.setProperty('height', 'auto', 'important');
+      var invite = Boolean(box.closest && box.closest('.course-sync-card-invite'));
       var compact = Boolean(box.closest && box.closest('.course-sync-card-stuck'));
-      box.style.setProperty('min-height', compact ? '240px' : '320px', 'important');
-      box.style.setProperty('flex', compact ? '1 1 240px' : '1 1 auto', 'important');
-      box.style.setProperty('margin', compact ? '0' : '0 0 18px', 'important');
+      var height = invite ? '190px' : (compact ? '240px' : '320px');
+      box.style.setProperty('min-height', height, 'important');
+      box.style.setProperty('flex', invite ? '0 0 190px' : (compact ? '1 1 240px' : '1 1 auto'), 'important');
+      box.style.setProperty('margin', invite || compact ? '0 0 12px' : '0 0 18px', 'important');
       box.style.setProperty('background-image', 'url("' + src + '")', 'important');
       box.style.setProperty('background-repeat', 'no-repeat', 'important');
       box.style.setProperty('background-position', 'center center', 'important');
@@ -1115,12 +1131,27 @@ var CourseApi = (function () {
     return (result && result.data) || result || {};
   }
 
-  function purchaserNeedsPartner(result) {
+  function isPurchaserResult(result) {
     var data = responseData(result);
     var role = (data.user && data.user.role) || data.role || '';
-    var purchaser = data.isPurchaser === true || role === 'PRIMARY';
-    if (!purchaser || data.isPartner === true || role === 'PARTNER') return false;
-    return !data.partnership;
+    if (data.isPartner === true || role === 'PARTNER') return false;
+    return data.isPurchaser === true || role === 'PRIMARY';
+  }
+
+  function purchaserNeedsPartner(result) {
+    if (!isPurchaserResult(result)) return false;
+    return !responseData(result).partnership;
+  }
+
+  function partnerHasSignedUp(result) {
+    var partnership = responseData(result).partnership;
+    return Boolean(partnership && partnership.status === 'ACTIVE' && partnership.partnerUserId);
+  }
+
+  function purchaserWaitingForSignup(result) {
+    if (!isPurchaserResult(result)) return false;
+    var partnership = responseData(result).partnership;
+    return Boolean(partnership) && !partnerHasSignedUp(result);
   }
 
   function storePurchaserForInvite(result, email) {
@@ -1149,36 +1180,116 @@ var CourseApi = (function () {
     var saved = storePurchaserForInvite(result, email);
     var modal = ensureModal();
     var card = resetCard(modal);
-    card.className = 'course-sync-card course-sync-card-partner course-sync-card-email';
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-invite course-sync-card-add';
     card.innerHTML = ''
-      + '<div class="course-sync-panel" style="padding:28px 28px 24px">'
-      + '<h2>Add your partner</h2>'
-      + '<p class="course-sync-lead">Your course progress syncs with your partner. Add their name and email so both of you can continue together.</p>'
-      + '<button type="button" class="course-sync-continue">Add your partner &#8594;</button>'
-      + '</div>';
-    var button = card.querySelector('button');
-    if (!saved.email || !saved.thankYou) {
-      card.querySelector('p').textContent = saved.email
-        ? 'Your checkout plan was not saved in this browser. Finish checkout on this device, then add your partner.'
-        : 'Your email was not saved in this browser. Enter the checkout email again.';
-      button.disabled = true;
-    } else {
-      button.onclick = function () {
-        var latest = storePurchaserForInvite(result, email);
-        if (!latest.email || !latest.thankYou) return;
-        window.location.assign(latest.thankYou);
-      };
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
+      + '<h2>Invite Your Partner</h2>'
+      + '<p class="course-sync-lead">Invite your learning partner to join this course so you can learn together and unlock weeks in sync.</p>'
+      + modalImage('invite-partner.png')
+      + '<ul class="course-sync-invite-steps">'
+      + inviteStep('<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M4 18c.8-3 2.6-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M14 14.6c1.2-.4 2.4 0 3.4.9 1 1.1 1.4 2.2 1.6 3.5"/>', 'Learn Together', 'Both partners complete lessons to unlock new weeks.')
+      + inviteStep('<path d="M5 16V8M10 16V5M15 16v-6M19 16V7"/>', 'Stay in Sync', 'Your progress is linked, so you move forward together.')
+      + inviteStep('<rect x="5" y="10" width="14" height="8" rx="1.5"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/><path d="M12 13v2"/>', 'Better Results', 'Accountability and support help you complete the course.')
+      + '</ul>'
+      + '<button type="button" class="course-sync-invite-go">Invite your partner</button>'
+      + '<p class="course-sync-sync-note" hidden></p>';
+    var button = card.querySelector('.course-sync-invite-go');
+    var note = card.querySelector('.course-sync-sync-note');
+    card.querySelector('.course-sync-x').onclick = function () {
+      hideModal(modal);
+    };
+    function goToInvite() {
+      var latest = storePurchaserForInvite(result, email);
+      if (!latest.email || !latest.thankYou) {
+        note.hidden = false;
+        note.classList.add('is-error');
+        note.textContent = latest.email
+          ? 'Your checkout plan was not saved in this browser. Finish checkout on this device, then add your partner.'
+          : 'Your email was not saved in this browser. Enter the checkout email again.';
+        button.disabled = true;
+        return;
+      }
+      window.location.assign(latest.thankYou);
     }
-    modal.classList.add('is-locked');
+    button.onclick = goToInvite;
+    if (!saved.email || !saved.thankYou) goToInvite();
+    modal.classList.remove('is-locked');
+    revealModal(modal);
+  }
+
+  function inviteStep(icon, title, text) {
+    return '<li><span class="course-sync-invite-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' + icon + '</svg></span><div><strong>' + title + '</strong><span>' + text + '</span></div></li>';
+  }
+
+  function showPartnerSignupModal() {
+    stopPartnerWaitPoll();
+    var modal = ensureModal();
+    if (modal.classList.contains('is-open') && modal.querySelector('.course-sync-card-invite')) return;
+    var card = resetCard(modal);
+    card.className = 'course-sync-card course-sync-card-partner course-sync-card-invite';
+    card.innerHTML = ''
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
+      + modalImage('partner-signup-wait.png')
+      + '<h2>Your Partner Still Needs to Sign Up</h2>'
+      + '<p class="course-sync-lead">We\'ve sent an invitation to your partner, but they haven\'t signed up yet. Please make sure they sign up to start the course in sync.</p>'
+      + '<ul class="course-sync-invite-steps">'
+      + inviteStep('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/>', 'Check Their Email', 'Ask your partner to check their inbox (and spam folder) for the invitation email.')
+      + inviteStep('<path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/><path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>', 'Complete Sign Up', 'They need to click the invite link and create their account.')
+      + inviteStep('<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M4 18c.8-3 2.6-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M14 14.6c1.2-.4 2.4 0 3.4.9 1 1.1 1.4 2.2 1.6 3.5"/>', 'Start Learning Together', 'Once they sign up, your course weeks will be unlocked together.')
+      + '</ul>'
+      + '<button type="button" class="course-sync-invite-resync">Resync status</button>'
+      + '<p class="course-sync-sync-note" hidden></p>';
+    var button = card.querySelector('.course-sync-invite-resync');
+    var note = card.querySelector('.course-sync-sync-note');
+    card.querySelector('.course-sync-x').onclick = function () {
+      hideModal(modal);
+    };
+    button.onclick = function () {
+      var saved = savedPurchaser() || {};
+      var id = kajabiUserId || saved.kajabiUserId || '';
+      if (!id) {
+        note.hidden = false;
+        note.classList.add('is-error');
+        note.textContent = 'Sign in again, then resync your partner status.';
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Syncing...';
+      note.hidden = true;
+      note.classList.remove('is-error');
+      CourseApi.lookup(id).then(function (result) {
+        if (partnerHasSignedUp(result)) {
+          markIdentity(result, id);
+          hideModal(modal);
+          handleKnownUser();
+          return;
+        }
+        button.disabled = false;
+        button.textContent = 'Resync status';
+        note.hidden = false;
+        note.textContent = 'Your partner still has not signed up.';
+      }).catch(function (error) {
+        button.disabled = false;
+        button.textContent = 'Resync status';
+        note.hidden = false;
+        note.classList.add('is-error');
+        note.textContent = error.message || 'Could not check your partner.';
+      });
+    };
+    modal.classList.remove('is-locked');
     revealModal(modal);
   }
 
   function continueAfterIdentity(result, email) {
-    if (!purchaserNeedsPartner(result)) {
-      handleKnownUser();
+    if (purchaserNeedsPartner(result)) {
+      showAddPartnerModal(result, email);
       return;
     }
-    showAddPartnerModal(result, email);
+    if (purchaserWaitingForSignup(result)) {
+      showPartnerSignupModal();
+      return;
+    }
+    handleKnownUser();
   }
 
   function showEmailModal() {

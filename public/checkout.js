@@ -2,6 +2,7 @@
   var BASE_URL = 'https://web-production-b4f12.up.railway.app';
   var ADMIN_API_KEY = 'local-dev-admin-key';
   var STORAGE_KEY = 'courseSync.purchaser';
+  var EMAIL_KEY = 'courseSync.purchaserEmail';
   var OFFERS = {
     x9qWfn6F: {
       plan: 'one_time',
@@ -36,14 +37,67 @@
     return field && field.value ? field.value.trim() : '';
   }
 
-  function checkoutEmail() {
-    var custom = document.querySelector('pds-input[component-id="email"]');
-    if (custom && custom.value) return String(custom.value).trim();
-    if (custom && custom.shadowRoot) {
-      var inner = custom.shadowRoot.querySelector('input');
-      if (inner && inner.value) return inner.value.trim();
+  function looksLikeEmail(value) {
+    var email = String(value || '').trim().toLowerCase();
+    return email.indexOf('@') > 0 ? email : '';
+  }
+
+  function inputEmail(node) {
+    if (!node || node.tagName !== 'INPUT') return '';
+    var hint = [
+      node.type,
+      node.id,
+      node.name,
+      node.getAttribute('autocomplete'),
+      node.getAttribute('placeholder'),
+      node.getAttribute('aria-label'),
+    ].join(' ').toLowerCase();
+    if (node.type !== 'email' && hint.indexOf('email') === -1) return '';
+    return looksLikeEmail(node.value);
+  }
+
+  function walkInputs(root, visit) {
+    if (!root || !root.querySelectorAll) return;
+    var nodes = root.querySelectorAll('input, pds-input');
+    for (var index = 0; index < nodes.length; index += 1) {
+      var node = nodes[index];
+      if (node.tagName === 'INPUT') visit(node);
+      if (node.shadowRoot) walkInputs(node.shadowRoot, visit);
     }
-    return fieldText('input[type="email"]');
+  }
+
+  function checkoutEmail() {
+    var found = '';
+    var custom = document.querySelector('pds-input[component-id="email"]');
+    if (custom) found = looksLikeEmail(custom.value);
+    if (!found && custom && custom.shadowRoot) {
+      var inner = custom.shadowRoot.querySelector('input');
+      found = inner ? looksLikeEmail(inner.value) : '';
+    }
+    if (!found) {
+      walkInputs(document, function (node) {
+        if (!found) found = inputEmail(node);
+      });
+    }
+    if (!found) {
+      try {
+        found = looksLikeEmail(localStorage.getItem(EMAIL_KEY));
+      } catch (error) {
+        found = '';
+      }
+    }
+    return found;
+  }
+
+  function rememberEmail(email) {
+    var value = looksLikeEmail(email);
+    if (!value) return '';
+    try {
+      localStorage.setItem(EMAIL_KEY, value);
+    } catch (error) {
+      /* storage can be blocked */
+    }
+    return value;
   }
 
   function checkoutName() {
@@ -55,7 +109,7 @@
     var offer = currentOffer();
     if (!offer) return null;
     var name = checkoutName();
-    var email = checkoutEmail();
+    var email = rememberEmail(checkoutEmail());
     var existing = readPurchaser() || {};
     if (!name && !email && existing.email) {
       name = existing.name || '';
@@ -94,8 +148,8 @@
       if (node.id === 'name' || node.getAttribute('testid') === 'name-input' || node.getAttribute('data-testid') === 'name-input') {
         name = node.value.trim();
       }
-      if (node.type === 'email' || (host && host.getAttribute('component-id') === 'email')) {
-        email = node.value.trim();
+        if (node.type === 'email' || (host && host.getAttribute('component-id') === 'email') || inputEmail(node)) {
+        email = looksLikeEmail(node.value);
       }
     }
     if (name || email) {
@@ -104,7 +158,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         id: existing.id,
         name: name || checkoutName() || existing.name || '',
-        email: email || checkoutEmail() || existing.email || '',
+        email: rememberEmail(email || checkoutEmail() || existing.email || ''),
         token: existing.token || '',
         role: existing.role || '',
         kajabiUserId: existing.kajabiUserId || '',
@@ -127,7 +181,7 @@
     return writePurchaser({
       id: user.id || draft.id,
       name: user.name || draft.name || '',
-      email: user.email || draft.email || '',
+      email: rememberEmail(user.email || draft.email || ''),
       token: data.token || draft.token || '',
       role: user.role || draft.role || 'PRIMARY',
       kajabiUserId: user.kajabiUserId || draft.kajabiUserId || '',
@@ -186,6 +240,11 @@
     rememberCheckoutPurchaser();
     document.addEventListener('input', capture, true);
     document.addEventListener('change', capture, true);
+    document.addEventListener('keyup', capture, true);
+    document.addEventListener('blur', capture, true);
+    window.addEventListener('pagehide', function () {
+      rememberCheckoutPurchaser();
+    });
     window.setInterval(rememberCheckoutPurchaser, 1000);
     document.addEventListener('click', function (event) {
       if (!isPayClick(event)) return;

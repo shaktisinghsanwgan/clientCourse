@@ -2,6 +2,7 @@
   var BASE_URL = 'https://web-production-b4f12.up.railway.app';
   var ADMIN_API_KEY = 'local-dev-admin-key';
   var STORAGE_KEY = 'courseSync.purchaser';
+  var EMAIL_KEY = 'courseSync.purchaserEmail';
   var PAGES = {
     one_time: 'https://www.reignitesex.com/invite-your-partner-one-time-payment',
     eight_month: 'https://www.reignitesex.com/invite-your-partner-8-monthly-payments',
@@ -9,11 +10,22 @@
   var formBound = false;
 
   function readPurchaser() {
+    var record = null;
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      record = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     } catch (error) {
-      return null;
+      record = null;
     }
+    var direct = '';
+    try {
+      direct = String(localStorage.getItem(EMAIL_KEY) || '').trim().toLowerCase();
+    } catch (error) {
+      direct = '';
+    }
+    if (!record && !direct) return null;
+    record = record || {};
+    if (!record.email && direct) record.email = direct;
+    return record;
   }
 
   function writePurchaser(record) {
@@ -57,7 +69,11 @@
     var saved = readPurchaser();
     var field = purchaserEmailField();
     if (!field || !saved || !saved.email) return;
-    if (field.value !== saved.email) field.value = saved.email;
+    if (field.value !== saved.email) {
+      field.value = saved.email;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     field.readOnly = true;
     field.setAttribute('readonly', 'readonly');
     field.setAttribute('aria-readonly', 'true');
