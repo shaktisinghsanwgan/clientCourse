@@ -69,6 +69,7 @@ async function clearPurchaserHistory(tx, purchaserId) {
   await tx.chapterProgress.deleteMany({ where: { userId: { in: userIds } } });
   await tx.progress.deleteMany({ where: { userId: { in: userIds } } });
   await tx.inactivityNotice.deleteMany({ where: { userId: { in: userIds } } });
+  await tx.partnerInviteNotice.deleteMany({ where: { userId: { in: userIds } } });
   if (partnership) {
     await tx.partner.delete({ where: { id: partnership.id } });
   }

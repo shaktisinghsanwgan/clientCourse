@@ -45,3 +45,27 @@ export async function sendInactivityEmail({ inactiveUser, inactiveSince, days })
 
   return { delivered: true };
 }
+
+export async function sendMissingPartnerInviteEmail({ purchaser, registeredAt }) {
+  if (!isMailConfigured()) {
+    return { delivered: false, skipped: true };
+  }
+
+  const when = new Date(registeredAt).toISOString();
+  const subject = `${purchaser.name} has not invited a partner`;
+  const text = [
+    `${purchaser.name} has not invited a partner.`,
+    '',
+    `${purchaser.name} (${purchaser.email}) checked out at ${when} and still has not sent a partner invite from the thank-you page.`,
+    'More than 24 hours have passed.',
+  ].join('\n');
+
+  await mailer().sendMail({
+    from: env.SMTP_FROM,
+    to: env.CLIENT_EMAIL,
+    subject,
+    text,
+  });
+
+  return { delivered: true };
+}
