@@ -383,15 +383,15 @@ describe('partner course synchronization', () => {
       .post('/api/v1/users/bind')
       .set('x-api-key', process.env.ADMIN_API_KEY)
       .send({ email: 'john@example.com', kajabiUserId: 'RS_ENC_v3_other_cookie' });
-    expect(again.status).toBe(409);
-    expect(again.body.errorCode).toBe('EMAIL_ALREADY_LINKED');
+    expect(again.status).toBe(200);
+    expect(again.body.data.user.kajabiUserId).toBe('RS_ENC_v3_other_cookie');
 
-    const found = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId });
+    const found = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId: 'RS_ENC_v3_other_cookie' });
     expect(found.status).toBe(200);
     expect(found.body.message).toBe('Purchaser');
 
     const saved = await request(app).post('/api/v1/chapters/progress').send({
-      kajabiUserId,
+      kajabiUserId: 'RS_ENC_v3_other_cookie',
       chapters: [{
         chapterName: 'Course Orientation Video',
         weekNumber: 1,
@@ -403,7 +403,7 @@ describe('partner course synchronization', () => {
     expect(saved.body.data.updates[0].weekNumber).toBe(1);
     expect(saved.body.data.updates[0].user.completedChapters).toBe(1);
 
-    const course = await request(app).get('/api/v1/course/sync').query({ kajabiUserId });
+    const course = await request(app).get('/api/v1/course/sync').query({ kajabiUserId: 'RS_ENC_v3_other_cookie' });
     expect(course.status).toBe(200);
     expect(course.body.user.email).toBe('john@example.com');
     const orientation = course.body.user.weeks[0].chapters.find((chapter) => chapter.chapterName === 'Course Orientation Video');
@@ -438,8 +438,9 @@ describe('partner course synchronization', () => {
       .post('/api/v1/users/bind')
       .set('x-api-key', process.env.ADMIN_API_KEY)
       .send({ email: 'jane@example.com', kajabiUserId: 'RS_ENC_v3_second_partner' });
-    expect(reusedEmail.status).toBe(409);
-    expect(reusedEmail.body.errorCode).toBe('EMAIL_ALREADY_LINKED');
+    expect(reusedEmail.status).toBe(200);
+    expect(reusedEmail.body.data.user.kajabiUserId).toBe('RS_ENC_v3_second_partner');
+    const partnerLogin = 'RS_ENC_v3_second_partner';
 
     const purchaserProgress = await request(app).post('/api/v1/chapters/progress').send({
       kajabiUserId: purchaserCookie,
@@ -451,7 +452,7 @@ describe('partner course synchronization', () => {
     expect(purchaserProgress.body.data.updates[0].partner.completedChapters).toBe(0);
     expect(purchaserProgress.body.data.updates[0].partner.email).toBe('jane@example.com');
 
-    const asPartner = await request(app).get('/api/v1/course/sync').query({ kajabiUserId: partnerCookie });
+    const asPartner = await request(app).get('/api/v1/course/sync').query({ kajabiUserId: partnerLogin });
     expect(asPartner.status).toBe(200);
     expect(asPartner.body.user.email).toBe('jane@example.com');
     expect(asPartner.body.partner.email).toBe('john@example.com');
@@ -461,7 +462,7 @@ describe('partner course synchronization', () => {
     expect(asPartner.body.partner.weeks[0].completedChapters).toBe(1);
 
     const partnerProgress = await request(app).post('/api/v1/chapters/progress').send({
-      kajabiUserId: partnerCookie,
+      kajabiUserId: partnerLogin,
       chapters: [{ chapterName: 'Week 1 Chapter 1', completed: true }],
     });
     expect(partnerProgress.status).toBe(200);

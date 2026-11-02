@@ -1684,10 +1684,14 @@ var CourseApi = (function () {
     var saved = savedPurchaser();
     if (saved && saved.email) return String(saved.email).trim().toLowerCase();
     try {
-      return String(localStorage.getItem('courseSync.purchaserEmail') || '').trim().toLowerCase();
+      var stored = String(localStorage.getItem('courseSync.purchaserEmail') || '').trim().toLowerCase();
+      if (stored.indexOf('@') > 0) return stored;
     } catch (error) {
-      return '';
+      /* storage can be blocked */
     }
+    var field = document.querySelector('#form_submission_custom_4, #form_submission_custom_3, input[name="form_submission[custom_4]"], input[name="form_submission[custom_3]"]');
+    var typed = field && field.value ? field.value.trim().toLowerCase() : '';
+    return typed.indexOf('@') > 0 ? typed : '';
   }
 
   var thankYouAttached = '';
@@ -1768,11 +1772,23 @@ var CourseApi = (function () {
         continueAfterIdentity(result);
       }).catch(function (error) {
         if (attempt !== loginAttempt) return;
-        if (isMissingIdentity(error)) {
+        if (!isMissingIdentity(error)) {
+          showModal('Could not check your account', error.message);
+          return;
+        }
+        var email = checkoutEmail();
+        if (!email) {
           handleMissingUser();
           return;
         }
-        showModal('Could not check your account', error.message);
+        api.attachLogin({ email: email, kajabiUserId: id }).then(function (result) {
+          if (attempt !== loginAttempt) return;
+          markIdentity(result, id);
+          continueAfterIdentity(result);
+        }).catch(function () {
+          if (attempt !== loginAttempt) return;
+          handleMissingUser();
+        });
       });
     }
     tick();

@@ -271,7 +271,16 @@
 
   function purchaserEmail() {
     var saved = readPurchaser();
-    return saved && saved.email ? String(saved.email).trim().toLowerCase() : '';
+    if (saved && saved.email) return String(saved.email).trim().toLowerCase();
+    try {
+      var stored = String(localStorage.getItem(EMAIL_KEY) || '').trim().toLowerCase();
+      if (stored.indexOf('@') > 0) return stored;
+    } catch (error) {
+      /* storage can be blocked */
+    }
+    var field = purchaserEmailField();
+    var typed = field && field.value ? field.value.trim().toLowerCase() : '';
+    return typed.indexOf('@') > 0 ? typed : '';
   }
 
   var loginAttached = '';

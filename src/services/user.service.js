@@ -348,9 +348,6 @@ export async function bindKajabiIdentity(input) {
   if (!existing || existing.status !== 'ACTIVE') {
     throw new ApiError(404, 'Enter the email you use to sign in. We could not find that email.', 'EMAIL_NOT_FOUND');
   }
-  if (existing.kajabiUserId && existing.kajabiUserId !== kajabiUserId) {
-    throw new ApiError(409, 'This email is already linked to a login.', 'EMAIL_ALREADY_LINKED');
-  }
 
   const owner = await prisma.user.findUnique({ where: { kajabiUserId } });
   if (owner && owner.id !== existing.id) {
