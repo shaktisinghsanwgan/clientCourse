@@ -298,6 +298,61 @@ describe('partner course synchronization', () => {
     expect(unknown.body.message).toBe('User not found');
   });
 
+  it('saves the thank-you cookie on the checkout user and recognizes that login later', async () => {
+    const registration = await registerPurchaser(JOHN);
+    expect(registration.status).toBe(201);
+    const cookieId = 'RS_ENC_v3_thank_you_cookie';
+
+    const missing = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId: cookieId });
+    expect(missing.status).toBe(404);
+
+    const unknown = await request(app)
+      .post('/api/v1/users/attach-login')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: 'missing@example.com', kajabiUserId: cookieId });
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.errorCode).toBe('EMAIL_NOT_FOUND');
+
+    const attached = await request(app)
+      .post('/api/v1/users/attach-login')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: JOHN.email, kajabiUserId: cookieId });
+    expect(attached.status).toBe(200);
+    expect(attached.body.data.user.kajabiUserId).toBe(cookieId);
+    expect(attached.body.data.user.email).toBe(JOHN.email);
+    expect(attached.body.data.isPurchaser).toBe(true);
+
+    const again = await request(app)
+      .post('/api/v1/users/attach-login')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: JOHN.email, kajabiUserId: cookieId });
+    expect(again.status).toBe(200);
+    expect(again.body.data.user.id).toBe(attached.body.data.user.id);
+
+    const found = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId: cookieId });
+    expect(found.status).toBe(200);
+    expect(found.body.data.email).toBe(JOHN.email);
+    expect(found.body.data.kajabiUserId).toBe(cookieId);
+
+    const oldId = await request(app).get('/api/v1/users/lookup').query({ kajabiUserId: 'kajabi_123' });
+    expect(oldId.status).toBe(404);
+
+    const john = await signIn(JOHN.email);
+    await linkJane(john.token);
+    await signIn(JANE.email);
+    await prisma.user.update({
+      where: { email: JANE.email },
+      data: { kajabiUserId: 'RS_ENC_v3_taken_cookie' },
+    });
+
+    const conflict = await request(app)
+      .post('/api/v1/users/attach-login')
+      .set('x-api-key', process.env.ADMIN_API_KEY)
+      .send({ email: JOHN.email, kajabiUserId: 'RS_ENC_v3_taken_cookie' });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.errorCode).toBe('IDENTITY_CONFLICT');
+  });
+
   it('recognizes a Kajabi cookie id and saves the lesson the member just completed', async () => {
     const { john } = await setupActivePartnership();
     const kajabiUserId = 'RS_ENC_v3_member_cookie';

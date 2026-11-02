@@ -291,6 +291,39 @@ function rolePayload(user) {
   };
 }
 
+export async function attachCheckoutLogin(input) {
+  const email = normalizeEmail(input.email);
+  const kajabiUserId = input.kajabiUserId.trim();
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (!existing || existing.status !== 'ACTIVE') {
+    throw new ApiError(404, 'Checkout email was not found.', 'EMAIL_NOT_FOUND');
+  }
+
+  const owner = await prisma.user.findUnique({ where: { kajabiUserId } });
+  if (owner && owner.id !== existing.id) {
+    throw new ApiError(409, 'This login is already linked to another email.', 'IDENTITY_CONFLICT');
+  }
+  if (existing.kajabiUserId === kajabiUserId) {
+    return {
+      ...(await authPayload(existing)),
+      ...rolePayload(existing),
+    };
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: existing.id },
+    data: {
+      kajabiUserId,
+      lastActivityAt: new Date(),
+      lastSeenAt: new Date(),
+    },
+  });
+  return {
+    ...(await authPayload(updated)),
+    ...rolePayload(updated),
+  };
+}
+
 export async function bindKajabiIdentity(input) {
   const email = normalizeEmail(input.email);
   const name = input.name ? input.name.trim() : '';

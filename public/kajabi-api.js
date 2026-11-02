@@ -29,14 +29,20 @@ var CourseApi = (function () {
     }).then(function (response) {
       return response.text().then(function (text) {
         var data = text ? JSON.parse(text) : null;
-        if (!response.ok) {
+        if (!response.ok || (data && data.success === false)) {
           var error = new Error((data && data.message) || ('Request failed (' + response.status + ')'));
-          error.status = response.status;
+          error.status = response.status || (data && data.errorCode === 'IDENTITY_NOT_FOUND' ? 404 : 400);
           error.body = data;
           throw error;
         }
         return data;
       });
+    });
+  }
+
+  function lookupUser(id) {
+    return request('/api/v1/users/lookup?kajabiUserId=' + encodeURIComponent(id), {
+      admin: true,
     });
   }
 
@@ -101,26 +107,6 @@ var CourseApi = (function () {
     var siteUser = window.Kajabi && window.Kajabi.currentSiteUser;
     if (!siteUser || siteUser.id == null || String(siteUser.id) === '-1') return '';
     return String(siteUser.id);
-  }
-
-  function identityCandidates() {
-    var ids = [];
-    function add(id) {
-      if (id == null) return;
-      var value = String(id).trim();
-      if (!value || value === '-1' || ids.indexOf(value) !== -1) return;
-      ids.push(value);
-    }
-    add(readCookie('rl_user_id'));
-    try {
-      add(localStorage.getItem('courseSync.linkedId'));
-    } catch (error) {
-      /* storage can be blocked */
-    }
-    var saved = savedPurchaser();
-    if (saved) add(saved.kajabiUserId);
-    add(siteMemberId());
-    return ids;
   }
 
   function cleanText(node) {
@@ -369,21 +355,23 @@ var CourseApi = (function () {
       + '#course-sync-modal .course-sync-card-stuck .course-sync-warn{margin-top:0;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-back{display:inline-block;margin-top:18px;background:#7a3048;color:#fff;}'
       + '#course-sync-modal .course-sync-card-stuck .course-sync-sync-note{text-align:left;}'
-      + '#course-sync-modal .course-sync-card-invite{width:min(440px,100%);padding:18px 22px 20px;border-radius:28px;background:#fff;}'
-      + '#course-sync-modal .course-sync-card-invite h2{font-size:28px;text-align:center;margin:8px 0 8px;}'
-      + '#course-sync-modal .course-sync-card-invite .course-sync-lead{text-align:center;margin:0 0 16px;color:#6d6468;}'
+      + '#course-sync-modal .course-sync-card-invite{box-sizing:border-box;width:min(440px,100%);max-height:calc(100vh - 32px);overflow:hidden !important;padding:16px 20px 18px;border-radius:28px;background:#fff;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-x{display:none !important;}'
+      + '#course-sync-modal .course-sync-card-invite h2{font-size:26px;text-align:center;margin:4px 0 6px;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-lead{text-align:center;margin:0 0 12px;color:#6d6468;}'
       + '#course-sync-modal .course-sync-invite-art{display:flex;justify-content:center;margin:8px 0 4px;}'
       + '#course-sync-modal .course-sync-invite-art svg{width:240px !important;height:168px !important;min-width:240px !important;min-height:168px !important;max-width:240px !important;max-height:168px !important;}'
-      + '#course-sync-modal .course-sync-invite-steps{margin:0;padding:16px 16px 6px;border-radius:18px;background:#fdecef;display:flex;flex-direction:column;gap:14px;}'
-      + '#course-sync-modal .course-sync-invite-steps li{display:flex;gap:12px;align-items:flex-start;margin:0;}'
+      + '#course-sync-modal .course-sync-invite-steps{margin:0;padding:12px 14px 8px;border-radius:18px;background:#fdecef;display:flex;flex-direction:column;gap:10px;}'
+      + '#course-sync-modal .course-sync-invite-steps li{display:flex !important;gap:12px;align-items:center !important;margin:0;}'
       + '#course-sync-modal .course-sync-invite-steps strong{display:block;margin:0 0 2px;color:#2a2326;font-size:15px;}'
       + '#course-sync-modal .course-sync-invite-steps span{display:block;color:#6f6562;font-size:13px;line-height:1.4;}'
-      + '#course-sync-modal .course-sync-invite-icon{width:36px;height:36px;min-width:36px;border-radius:50%;background:#f8d5df;color:#c45c78;display:grid;place-items:center;flex:none;}'
+      + '#course-sync-modal .course-sync-invite-icon{position:relative !important;width:36px;height:36px;min-width:36px;border-radius:50%;background:#f8d5df;color:#c45c78;display:flex !important;align-items:center !important;justify-content:center !important;overflow:hidden;flex:none;}'
+      + '#course-sync-modal .course-sync-invite-icon svg{position:static !important;top:auto !important;left:auto !important;right:auto !important;bottom:auto !important;inset:auto !important;display:block !important;width:18px !important;height:18px !important;min-width:18px !important;min-height:18px !important;max-width:18px !important;max-height:18px !important;margin:0 !important;transform:none !important;}'
       + '#course-sync-modal .course-sync-card-add h2,#course-sync-modal .course-sync-card-add .course-sync-lead{text-align:left;}'
-      + '#course-sync-modal .course-sync-card-add h2{margin:4px 28px 8px 0;}'
-      + '#course-sync-modal .course-sync-card-invite .course-sync-invite-resync,#course-sync-modal .course-sync-card-invite .course-sync-invite-go{width:100%;margin-top:16px;border-radius:12px;padding:13px 16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}'
+      + '#course-sync-modal .course-sync-card-add h2{margin:4px 0 8px;}'
+      + '#course-sync-modal .course-sync-card-invite .course-sync-invite-resync,#course-sync-modal .course-sync-card-invite .course-sync-invite-go{box-sizing:border-box !important;position:static !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;width:100% !important;max-width:100% !important;margin:12px 0 0 !important;border-radius:12px;padding:13px 16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}'
       + '#course-sync-modal .course-sync-card-invite .course-sync-sync-note{text-align:center;}'
-      + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}#course-sync-modal .course-sync-card-invite h2{font-size:24px;}}';
+      + '@media (max-width:760px){#course-sync-modal .course-sync-split{display:block;min-height:0;}#course-sync-modal .course-sync-card-partner{overflow:auto;}#course-sync-modal .course-sync-card-invite{overflow:hidden !important;}#course-sync-modal .course-sync-card-partner h2{font-size:26px;}#course-sync-modal .course-sync-card-invite h2{font-size:24px;}}';
     document.head.appendChild(style);
     var modal = document.createElement('div');
     modal.id = 'course-sync-modal';
@@ -487,10 +475,11 @@ var CourseApi = (function () {
       box.style.setProperty('height', 'auto', 'important');
       var invite = Boolean(box.closest && box.closest('.course-sync-card-invite'));
       var compact = Boolean(box.closest && box.closest('.course-sync-card-stuck'));
-      var height = invite ? '190px' : (compact ? '240px' : '320px');
+      var height = invite ? '112px' : (compact ? '240px' : '320px');
       box.style.setProperty('min-height', height, 'important');
-      box.style.setProperty('flex', invite ? '0 0 190px' : (compact ? '1 1 240px' : '1 1 auto'), 'important');
-      box.style.setProperty('margin', invite || compact ? '0 0 12px' : '0 0 18px', 'important');
+      box.style.setProperty('max-height', invite ? '112px' : 'none', 'important');
+      box.style.setProperty('flex', invite ? '0 0 112px' : (compact ? '1 1 240px' : '1 1 auto'), 'important');
+      box.style.setProperty('margin', invite ? '0 0 8px' : (compact ? '0 0 12px' : '0 0 18px'), 'important');
       box.style.setProperty('background-image', 'url("' + src + '")', 'important');
       box.style.setProperty('background-repeat', 'no-repeat', 'important');
       box.style.setProperty('background-position', 'center center', 'important');
@@ -1097,10 +1086,23 @@ var CourseApi = (function () {
   }
 
   function revealModal(modal) {
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
     modal.setAttribute('data-turbo-permanent', '');
+    if (!modal.hasAttribute('popover')) modal.setAttribute('popover', 'manual');
+    if (typeof modal.showPopover === 'function') {
+      try {
+        if (!modal.matches(':popover-open')) modal.showPopover();
+      } catch (error) {
+        /* popover is optional; inline styles still show the modal */
+      }
+    }
     modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('visibility', 'visible', 'important');
+    modal.style.setProperty('opacity', '1', 'important');
     modal.style.setProperty('position', 'fixed', 'important');
     modal.style.setProperty('inset', '0', 'important');
+    modal.style.setProperty('width', '100vw', 'important');
+    modal.style.setProperty('height', '100vh', 'important');
     modal.style.setProperty('z-index', '2147483647', 'important');
     modal.style.setProperty('align-items', 'center', 'important');
     modal.style.setProperty('justify-content', 'center', 'important');
@@ -1116,6 +1118,13 @@ var CourseApi = (function () {
   function hideModal(modal) {
     if (modal.querySelector('.course-sync-card-stuck')) return;
     if (modal.querySelector('.course-sync-card-wait')) stopPartnerWaitPoll();
+    if (typeof modal.hidePopover === 'function') {
+      try {
+        if (modal.matches(':popover-open')) modal.hidePopover();
+      } catch (error) {
+        /* already closed */
+      }
+    }
     modal.style.setProperty('display', 'none', 'important');
     modal.classList.remove('is-open', 'is-locked');
     document.documentElement.style.removeProperty('overflow');
@@ -1182,22 +1191,18 @@ var CourseApi = (function () {
     var card = resetCard(modal);
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-invite course-sync-card-add';
     card.innerHTML = ''
-      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + '<h2>Invite Your Partner</h2>'
       + '<p class="course-sync-lead">Invite your learning partner to join this course so you can learn together and unlock weeks in sync.</p>'
       + modalImage('invite-partner.png')
       + '<ul class="course-sync-invite-steps">'
-      + inviteStep('<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M4 18c.8-3 2.6-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M14 14.6c1.2-.4 2.4 0 3.4.9 1 1.1 1.4 2.2 1.6 3.5"/>', 'Learn Together', 'Both partners complete lessons to unlock new weeks.')
-      + inviteStep('<path d="M5 16V8M10 16V5M15 16v-6M19 16V7"/>', 'Stay in Sync', 'Your progress is linked, so you move forward together.')
-      + inviteStep('<rect x="5" y="10" width="14" height="8" rx="1.5"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/><path d="M12 13v2"/>', 'Better Results', 'Accountability and support help you complete the course.')
+      + inviteStep('<circle cx="9" cy="9" r="2.6"/><circle cx="15.4" cy="9.8" r="2"/><path d="M4.8 18.2c.7-2.8 2.3-4 4.6-4s3.9 1.2 4.6 4"/><path d="M13.8 15c1-.3 2 0 2.8.9.7.8 1 1.6 1.1 2.5"/>', 'Learn Together', 'Both partners complete lessons to unlock new weeks.')
+      + inviteStep('<path d="M6 18V10M10 18V7M14 18v-6M18 18V9"/>', 'Stay in Sync', 'Your progress is linked, so you move forward together.')
+      + inviteStep('<rect x="6" y="11" width="12" height="8" rx="1.5"/><path d="M9 11V8.5a3 3 0 0 1 6 0V11"/><path d="M12 14.2v2"/>', 'Better Results', 'Accountability and support help you complete the course.')
       + '</ul>'
       + '<button type="button" class="course-sync-invite-go">Invite your partner</button>'
       + '<p class="course-sync-sync-note" hidden></p>';
     var button = card.querySelector('.course-sync-invite-go');
     var note = card.querySelector('.course-sync-sync-note');
-    card.querySelector('.course-sync-x').onclick = function () {
-      hideModal(modal);
-    };
     function goToInvite() {
       var latest = storePurchaserForInvite(result, email);
       if (!latest.email || !latest.thankYou) {
@@ -1218,7 +1223,7 @@ var CourseApi = (function () {
   }
 
   function inviteStep(icon, title, text) {
-    return '<li><span class="course-sync-invite-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' + icon + '</svg></span><div><strong>' + title + '</strong><span>' + text + '</span></div></li>';
+    return '<li><span class="course-sync-invite-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="position:static !important;top:auto !important;left:auto !important;inset:auto !important;display:block !important;width:18px !important;height:18px !important;min-width:18px !important;min-height:18px !important;max-width:18px !important;max-height:18px !important;margin:0 !important;transform:none !important;">' + icon + '</svg></span><div><strong>' + title + '</strong><span>' + text + '</span></div></li>';
   }
 
   function showPartnerSignupModal() {
@@ -1228,22 +1233,18 @@ var CourseApi = (function () {
     var card = resetCard(modal);
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-invite';
     card.innerHTML = ''
-      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button>'
       + modalImage('partner-signup-wait.png')
       + '<h2>Your Partner Still Needs to Sign Up</h2>'
       + '<p class="course-sync-lead">We\'ve sent an invitation to your partner, but they haven\'t signed up yet. Please make sure they sign up to start the course in sync.</p>'
       + '<ul class="course-sync-invite-steps">'
-      + inviteStep('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/>', 'Check Their Email', 'Ask your partner to check their inbox (and spam folder) for the invitation email.')
-      + inviteStep('<path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/><path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>', 'Complete Sign Up', 'They need to click the invite link and create their account.')
-      + inviteStep('<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M4 18c.8-3 2.6-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M14 14.6c1.2-.4 2.4 0 3.4.9 1 1.1 1.4 2.2 1.6 3.5"/>', 'Start Learning Together', 'Once they sign up, your course weeks will be unlocked together.')
+      + inviteStep('<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M4 8.5l8 5.5 8-5.5"/>', 'Check Their Email', 'Ask your partner to check their inbox (and spam folder) for the invitation email.')
+      + inviteStep('<path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><path d="M8 12h8"/>', 'Complete Sign Up', 'They need to click the invite link and create their account.')
+      + inviteStep('<circle cx="9.2" cy="9" r="2.5"/><circle cx="15.2" cy="9.7" r="1.9"/><path d="M5.2 18c.6-2.6 2.2-3.8 4.2-3.8s3.6 1.2 4.2 3.8"/><path d="M14 15c.9-.3 1.9 0 2.6.8.6.7.9 1.5 1 2.4"/>', 'Start Learning Together', 'Once they sign up, your course weeks will be unlocked together.')
       + '</ul>'
       + '<button type="button" class="course-sync-invite-resync">Resync status</button>'
       + '<p class="course-sync-sync-note" hidden></p>';
     var button = card.querySelector('.course-sync-invite-resync');
     var note = card.querySelector('.course-sync-sync-note');
-    card.querySelector('.course-sync-x').onclick = function () {
-      hideModal(modal);
-    };
     button.onclick = function () {
       var saved = savedPurchaser() || {};
       var id = kajabiUserId || saved.kajabiUserId || '';
@@ -1295,7 +1296,11 @@ var CourseApi = (function () {
   function showEmailModal() {
     stopPartnerWaitPoll();
     var modal = ensureModal();
-    if (modal.classList.contains('is-locked') && modal.classList.contains('is-open')) return;
+    if (modal.querySelector('.course-sync-card-email input')) {
+      modal.classList.add('is-locked');
+      revealModal(modal);
+      return;
+    }
     var card = resetCard(modal);
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-email';
     card.innerHTML = ''
@@ -1336,8 +1341,13 @@ var CourseApi = (function () {
     button.disabled = false;
     button.onclick = function () {
       var email = input.value.trim();
+      kajabiUserId = readCookie('rl_user_id') || siteMemberId() || kajabiUserId;
       if (!email) {
         showEmailError('Enter your registered email address.');
+        return;
+      }
+      if (!kajabiUserId) {
+        showEmailError('Sign in to the course, then enter your email.');
         return;
       }
       button.disabled = true;
@@ -1646,33 +1656,126 @@ var CourseApi = (function () {
     });
   }
 
-  function lookupKnownIdentity(ids, index) {
-    if (index >= ids.length) {
-      kajabiUserId = readCookie('rl_user_id') || siteMemberId();
-      handleMissingUser();
-      return;
+  function isThankYouPage() {
+    var path = window.location.pathname || '';
+    return /thank[-_ ]?you/i.test(path)
+      || /invite-your-partner-one-time-payment/i.test(path)
+      || /invite-your-partner-8-monthly-payments/i.test(path);
+  }
+
+  function checkoutEmail() {
+    var saved = savedPurchaser();
+    if (saved && saved.email) return String(saved.email).trim().toLowerCase();
+    try {
+      return String(localStorage.getItem('courseSync.purchaserEmail') || '').trim().toLowerCase();
+    } catch (error) {
+      return '';
     }
-    CourseApi.lookup(ids[index]).then(function (result) {
-      markIdentity(result, ids[index]);
-      continueAfterIdentity(result);
+  }
+
+  var thankYouAttached = '';
+  var thankYouBusy = false;
+  var loginAttempt = 0;
+
+  function attachThankYouLogin() {
+    var email = checkoutEmail();
+    var id = readCookie('rl_user_id');
+    if (!email || !id || thankYouBusy || thankYouAttached === email + '|' + id) return;
+    var key = email + '|' + id;
+    thankYouAttached = key;
+    thankYouBusy = true;
+    api.attachLogin({ email: email, kajabiUserId: id }).then(function (result) {
+      thankYouBusy = false;
+      var saved = savedPurchaser() || {};
+      saved.email = email;
+      saved.kajabiUserId = id;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      markIdentity(result, id);
     }).catch(function (error) {
-      if (isMissingIdentity(error)) {
-        lookupKnownIdentity(ids, index + 1);
+      if (!error || error.status !== 404) {
+        thankYouBusy = false;
+        if (thankYouAttached === key) thankYouAttached = '';
         return;
       }
-      showModal('Could not check your account', error.message);
+      var saved = savedPurchaser();
+      if (!saved || !saved.name || !saved.email) {
+        thankYouBusy = false;
+        if (thankYouAttached === key) thankYouAttached = '';
+        return;
+      }
+      api.registerPurchaser(saved).then(function () {
+        return api.attachLogin({ email: email, kajabiUserId: id });
+      }).then(function (result) {
+        thankYouBusy = false;
+        thankYouAttached = key;
+        saved.kajabiUserId = id;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        markIdentity(result, id);
+      }).catch(function () {
+        thankYouBusy = false;
+        thankYouAttached = '';
+      });
     });
   }
 
+  function watchThankYouLogin() {
+    attachThankYouLogin();
+    var tries = 0;
+    var timer = window.setInterval(function () {
+      tries += 1;
+      attachThankYouLogin();
+      if (tries >= 20) window.clearInterval(timer);
+    }, 400);
+  }
+
+  function watchLoginIdentity() {
+    var attempt = loginAttempt + 1;
+    loginAttempt = attempt;
+    var tries = 0;
+    function tick() {
+      if (attempt !== loginAttempt) return;
+      var id = readCookie('rl_user_id');
+      if (!id) {
+        tries += 1;
+        if (tries < 12) window.setTimeout(tick, 400);
+        return;
+      }
+      if (identityReady && kajabiUserId === id) {
+        handleKnownUser();
+        return;
+      }
+      kajabiUserId = id;
+      lookupUser(id).then(function (result) {
+        if (attempt !== loginAttempt) return;
+        markIdentity(result, id);
+        continueAfterIdentity(result);
+      }).catch(function (error) {
+        if (attempt !== loginAttempt) return;
+        if (isMissingIdentity(error)) {
+          handleMissingUser();
+          return;
+        }
+        showModal('Could not check your account', error.message);
+      });
+    }
+    tick();
+  }
+
   function boot() {
-    var ids = identityCandidates();
-    kajabiUserId = ids[0] || '';
+    if (isThankYouPage()) {
+      watchThankYouLogin();
+      return;
+    }
     if (isLessonPage()) {
       watchLesson();
       watchPlaylistChecks();
     }
-    if (!ids.length) return;
-    lookupKnownIdentity(ids, 0);
+    var id = readCookie('rl_user_id');
+    if (identityReady && id && kajabiUserId === id) {
+      handleKnownUser();
+      return;
+    }
+    watchLoginIdentity();
   }
 
   var api = {
@@ -1684,13 +1787,16 @@ var CourseApi = (function () {
         body: compact({ name: input.name, email: input.email }),
       });
     },
-    lookup: function (id) {
-      return request('/api/v1/users/lookup?kajabiUserId=' + encodeURIComponent(id), {
-        admin: true,
-      });
-    },
+    lookup: lookupUser,
     bindAccount: function (input) {
       return request('/api/v1/users/bind', {
+        method: 'POST',
+        admin: true,
+        body: compact(input),
+      });
+    },
+    attachLogin: function (input) {
+      return request('/api/v1/users/attach-login', {
         method: 'POST',
         admin: true,
         body: compact(input),

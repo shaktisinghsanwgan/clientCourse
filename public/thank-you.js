@@ -208,14 +208,90 @@
     }, true);
   }
 
+  function readCookie(name) {
+    var pieces = document.cookie ? document.cookie.split(';') : [];
+    for (var index = 0; index < pieces.length; index += 1) {
+      var piece = pieces[index].trim();
+      if (piece.indexOf(name + '=') === 0) return decodeURIComponent(piece.slice(name.length + 1));
+    }
+    return '';
+  }
+
+  function purchaserEmail() {
+    var saved = readPurchaser();
+    return saved && saved.email ? String(saved.email).trim().toLowerCase() : '';
+  }
+
+  var loginAttached = '';
+  var loginBusy = false;
+
+  function rememberAttachedLogin(id) {
+    var saved = readPurchaser() || {};
+    saved.kajabiUserId = id;
+    if (saved.email) writePurchaser(saved);
+  }
+
+  function attachCheckoutLogin() {
+    var email = purchaserEmail();
+    var kajabiUserId = readCookie('rl_user_id');
+    if (!email || !kajabiUserId || loginBusy || loginAttached === email + '|' + kajabiUserId) return;
+    var key = email + '|' + kajabiUserId;
+    loginAttached = key;
+    loginBusy = true;
+    request('/api/v1/users/attach-login', {
+      method: 'POST',
+      admin: true,
+      body: {
+        email: email,
+        kajabiUserId: kajabiUserId,
+      },
+    }).then(function () {
+      loginBusy = false;
+      rememberAttachedLogin(kajabiUserId);
+    }).catch(function (error) {
+      if (error.status !== 404) {
+        loginBusy = false;
+        if (loginAttached === key) loginAttached = '';
+        return;
+      }
+      var saved = readPurchaser();
+      if (!saved || !saved.email || !saved.name) {
+        loginBusy = false;
+        if (loginAttached === key) loginAttached = '';
+        return;
+      }
+      registerPurchaser(saved).then(function () {
+        return request('/api/v1/users/attach-login', {
+          method: 'POST',
+          admin: true,
+          body: {
+            email: email,
+            kajabiUserId: kajabiUserId,
+          },
+        });
+      }).then(function () {
+        loginBusy = false;
+        loginAttached = key;
+        rememberAttachedLogin(kajabiUserId);
+      }).catch(function () {
+        loginBusy = false;
+        loginAttached = '';
+      });
+    });
+  }
+
   function boot() {
     if (!isInvitePage()) return;
     if (redirectIfNeeded()) return;
     lockPurchaserEmail();
     watchForm();
+    attachCheckoutLogin();
+    var tries = 0;
     window.setInterval(function () {
       lockPurchaserEmail();
       if (!formBound) watchForm();
+      tries += 1;
+      if (tries <= 20) attachCheckoutLogin();
     }, 500);
   }
 

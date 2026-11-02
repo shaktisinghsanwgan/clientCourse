@@ -4,6 +4,7 @@ import {
   loginByEmail,
   registerPurchaser,
   syncAuthenticatedUser,
+  attachCheckoutLogin,
   bindKajabiIdentity,
   updateUserAccount,
   verifyByKajabiUserId,
@@ -32,6 +33,12 @@ export async function login(req, res) {
 export async function lookup(req, res) {
   const result = await verifyByKajabiUserId(req.valid.query.kajabiUserId);
   const message = result.isPurchaser ? 'Purchaser' : 'Partner';
+  sendSuccess(res, 200, message, result);
+}
+
+export async function attachLogin(req, res) {
+  const result = await attachCheckoutLogin(req.valid.body);
+  const message = result.isPurchaser ? 'Purchaser login saved' : 'Partner login saved';
   sendSuccess(res, 200, message, result);
 }
 
