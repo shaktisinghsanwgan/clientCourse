@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/database.js';
 import { notifyInactiveUsers } from '../../src/services/inactivity.service.js';
-import { notifyMissingPartnerInvites } from '../../src/services/partner-invite-notice.service.js';
+import { notifyPartnerInviteShown } from '../../src/services/partner-invite-notice.service.js';
 import { JANE, JOHN, bearer, linkJane, mockKajabi, registerPurchaser, signIn } from '../helpers.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -118,44 +118,28 @@ describe('inactivity email and live status', () => {
     expect(mail.sent.map((item) => item.inactiveUser.email).sort()).toEqual([JANE.email, JOHN.email].sort());
   });
 
-  it('emails CLIENT_EMAIL once when a purchaser has not invited a partner for 24 hours', async () => {
+  it('emails CLIENT_EMAIL once when the invite-partner modal is shown', async () => {
     await registerPurchaser(JOHN);
-    const now = new Date();
-    await prisma.user.update({
-      where: { email: JOHN.email },
-      data: { createdAt: new Date(now.getTime() - (25 * 60 * 60 * 1000)) },
-    });
-
     const mail = captureMail();
-    const first = await notifyMissingPartnerInvites({ send: mail.send, now });
-    expect(first.notified).toBe(1);
+    const first = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
+    expect(first.status).toBe('notified');
     expect(mail.sent).toHaveLength(1);
     expect(mail.sent[0].to).toBe('client@example.com');
     expect(mail.sent[0].purchaser.email).toBe(JOHN.email);
     expect(mail.sent[0].purchaser.name).toBe(JOHN.name);
 
-    const second = await notifyMissingPartnerInvites({ send: mail.send, now });
-    expect(second.notified).toBe(0);
-    expect(second.skipped).toBe(1);
+    const second = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
+    expect(second.status).toBe('skipped');
     expect(mail.sent).toHaveLength(1);
   });
 
-  it('does not email when the purchaser invited a partner or the checkout is under 24 hours old', async () => {
-    const registration = await registerPurchaser(JOHN);
-    expect(registration.status).toBe(201);
+  it('does not email when the purchaser has already invited a partner', async () => {
+    await registerPurchaser(JOHN);
     const john = await signIn(JOHN.email);
     await linkJane(john.token);
-    await registerPurchaser({ ...JOHN, email: 'fresh@example.com', name: 'Fresh Buyer' });
-
-    const now = new Date();
-    await prisma.user.update({
-      where: { email: JOHN.email },
-      data: { createdAt: new Date(now.getTime() - (25 * 60 * 60 * 1000)) },
-    });
-
     const mail = captureMail();
-    const summary = await notifyMissingPartnerInvites({ send: mail.send, now });
-    expect(summary.checked).toBe(0);
+    const summary = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
+    expect(summary.status).toBe('skipped');
     expect(mail.sent).toHaveLength(0);
   });
 });

@@ -1220,6 +1220,23 @@ var CourseApi = (function () {
     if (!saved.email || !saved.thankYou) goToInvite();
     modal.classList.remove('is-locked');
     revealModal(modal);
+    reportMissingPartnerInvite(saved);
+  }
+
+  var inviteNoticeSent = false;
+
+  function reportMissingPartnerInvite(saved) {
+    if (inviteNoticeSent) return;
+    var id = (saved && saved.kajabiUserId) || kajabiUserId;
+    if (!id) return;
+    inviteNoticeSent = true;
+    request('/api/v1/partners/invite-shown', {
+      method: 'POST',
+      admin: true,
+      body: { kajabiUserId: id },
+    }).catch(function () {
+      inviteNoticeSent = false;
+    });
   }
 
   function inviteStep(icon, title, text) {

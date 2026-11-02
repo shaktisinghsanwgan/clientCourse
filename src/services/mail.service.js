@@ -57,7 +57,7 @@ export async function sendMissingPartnerInviteEmail({ purchaser, registeredAt })
     `${purchaser.name} has not invited a partner.`,
     '',
     `${purchaser.name} (${purchaser.email}) checked out at ${when} and still has not sent a partner invite from the thank-you page.`,
-    'More than 24 hours have passed.',
+    'They signed in without sending a partner invite.',
   ].join('\n');
 
   await mailer().sendMail({
