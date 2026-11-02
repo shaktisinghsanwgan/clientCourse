@@ -133,6 +133,47 @@
     });
   }
 
+  function purchaserEmailOnPage() {
+    var field = purchaserEmailField();
+    var email = field && field.value ? field.value.trim().toLowerCase() : '';
+    return email.indexOf('@') > 0 ? email : '';
+  }
+
+  function linkByPurchaserEmail(email, fields) {
+    return request('/api/v1/partners/link', {
+      method: 'POST',
+      admin: true,
+      body: {
+        purchaserEmail: email,
+        partnerName: fields.name,
+        partnerEmail: fields.email,
+      },
+    });
+  }
+
+  function linkSavedPurchaser(fields) {
+    var purchaser = readPurchaser() || {};
+    var email = purchaser.email || purchaserEmailOnPage();
+    var name = purchaser.name || 'Purchaser';
+    if (!email) {
+      return Promise.reject(new Error('Your checkout details were not saved in this browser. Finish checkout on this device, then send the invite.'));
+    }
+    return linkByPurchaserEmail(email, fields).catch(function (error) {
+      if (error.status !== 404) throw error;
+      return registerPurchaser({
+        name: name,
+        email: email,
+        plan: purchaser.plan || pagePlan(),
+      }).then(function (record) {
+        return linkPartner(record, fields.name, fields.email);
+      });
+    });
+  }
+
+  function savePartner(fields) {
+    return linkSavedPurchaser(fields);
+  }
+
   function linkPartner(purchaser, partnerName, partnerEmail) {
     return request('/api/v1/partners/link', {
       method: 'POST',
@@ -148,8 +189,17 @@
   }
 
   function inviteFields(form) {
-    var nameInput = form.querySelector('#form_submission_name, input[name="form_submission[name]"]');
+    var nameInput = form.querySelector('#form_submission_name, input[name="form_submission[name]"], input[name*="[name]"]');
     var emailInput = form.querySelector('#form_submission_email, input[name="form_submission[email]"]');
+    if (!emailInput) {
+      var emails = form.querySelectorAll('input[type="email"]');
+      for (var index = 0; index < emails.length; index += 1) {
+        var fieldName = emails[index].name || emails[index].id || '';
+        if (/custom_3|custom_4/.test(fieldName) || emails[index].readOnly) continue;
+        emailInput = emails[index];
+        break;
+      }
+    }
     var permission = form.querySelector('input[type="checkbox"][name="form_submission[custom_1]"]');
     return {
       name: nameInput && nameInput.value ? nameInput.value.trim() : '',
@@ -175,29 +225,31 @@
   function watchForm() {
     var partnerEmail = document.querySelector('#form_submission_email, input[name="form_submission[email]"]');
     var form = partnerEmail && partnerEmail.form;
+    if (!form) {
+      var forms = document.querySelectorAll('form');
+      for (var index = 0; index < forms.length; index += 1) {
+        if (forms[index].querySelector('input[type="email"], input[name*="email"]')) {
+          form = forms[index];
+          break;
+        }
+      }
+    }
     if (!form || form.getAttribute('data-course-sync-bound') === 'true') return;
     form.setAttribute('data-course-sync-bound', 'true');
     formBound = true;
     form.addEventListener('submit', function (event) {
       if (form.getAttribute('data-course-sync-linked') === 'true') return;
-      var purchaser = readPurchaser();
-      if (!purchaser || !purchaser.email || !purchaser.name) {
-        event.preventDefault();
-        event.stopPropagation();
-        showFormError(form, 'Your checkout details were not saved in this browser. Finish checkout on this device, then send the invite.');
-        return;
-      }
       var fields = inviteFields(form);
-      if (!fields.name || !fields.email || !fields.allowed) return;
+      if (!fields.allowed) return;
       event.preventDefault();
       event.stopPropagation();
+      if (!fields.name || !fields.email) {
+        showFormError(form, 'Enter your partner name and email.');
+        return;
+      }
       var button = form.querySelector('#form-button, button[type="submit"]');
       if (button) button.disabled = true;
-      registerPurchaser(purchaser).then(function (record) {
-        return linkPartner(record, fields.name, fields.email).then(function () {
-          return record;
-        });
-      }).then(function () {
+      savePartner(fields).then(function () {
         form.setAttribute('data-course-sync-linked', 'true');
         if (button) button.disabled = false;
         HTMLFormElement.prototype.submit.call(form);
