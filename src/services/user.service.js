@@ -84,7 +84,13 @@ async function clearPurchaserHistory(tx, purchaserId) {
 
 export async function registerPurchaser(input) {
   const email = normalizeEmail(input.email);
-  const verification = await verifyPurchaseByEmail(email, input.kajabiCustomerId);
+  let verification = { configured: false, customer: null, paid: false, purchaseId: null, offerId: null };
+  try {
+    verification = await verifyPurchaseByEmail(email, input.kajabiCustomerId);
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 409) throw error;
+    console.error('Kajabi purchase check skipped', error);
+  }
   if (verification.configured && verification.customer) {
     await assertKajabiIdAvailable(verification.customer.id, email);
   }

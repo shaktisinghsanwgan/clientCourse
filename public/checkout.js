@@ -100,9 +100,36 @@
     return value;
   }
 
+  function inputName(node) {
+    if (!node || node.tagName !== 'INPUT') return '';
+    var hint = [
+      node.id,
+      node.name,
+      node.getAttribute('autocomplete'),
+      node.getAttribute('placeholder'),
+      node.getAttribute('aria-label'),
+      node.getAttribute('testid'),
+      node.getAttribute('data-testid'),
+    ].join(' ').toLowerCase();
+    if (node.type === 'email' || hint.indexOf('email') !== -1) return '';
+    if (hint.indexOf('name') === -1) return '';
+    return node.value ? node.value.trim() : '';
+  }
+
   function checkoutName() {
     var named = document.querySelector('#name, input[testid="name-input"], input[data-testid="name-input"]');
-    return named && named.value ? named.value.trim() : '';
+    if (named && named.value && named.value.trim()) return named.value.trim();
+    var custom = document.querySelector('pds-input[component-id="name"]');
+    if (custom && custom.value && String(custom.value).trim()) return String(custom.value).trim();
+    if (custom && custom.shadowRoot) {
+      var inner = custom.shadowRoot.querySelector('input');
+      if (inner && inner.value && inner.value.trim()) return inner.value.trim();
+    }
+    var found = '';
+    walkInputs(document, function (node) {
+      if (!found) found = inputName(node);
+    });
+    return found;
   }
 
   function rememberCheckoutPurchaser() {
@@ -145,7 +172,7 @@
           break;
         }
       }
-      if (node.id === 'name' || node.getAttribute('testid') === 'name-input' || node.getAttribute('data-testid') === 'name-input') {
+      if (node.id === 'name' || node.getAttribute('testid') === 'name-input' || node.getAttribute('data-testid') === 'name-input' || inputName(node)) {
         name = node.value.trim();
       }
         if (node.type === 'email' || (host && host.getAttribute('component-id') === 'email') || inputEmail(node)) {
@@ -220,6 +247,38 @@
     });
   }
 
+  var savedKey = '';
+  var savingKey = '';
+  var saveTimer = 0;
+
+  function draftKey(draft) {
+    if (!draft || !draft.name || !draft.email) return '';
+    return String(draft.email).toLowerCase() + '\n' + draft.name.trim() + '\n' + (draft.plan || '');
+  }
+
+  function persistPurchaser(draft) {
+    var key = draftKey(draft);
+    if (!key || key === savedKey || key === savingKey) return Promise.resolve(draft);
+    savingKey = key;
+    return registerPurchaser(draft).then(function (record) {
+      if (savingKey === key) savingKey = '';
+      if (record && record.id) savedKey = key;
+      return record || draft;
+    });
+  }
+
+  function scheduleSave() {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(function () {
+      persistPurchaser(rememberCheckoutPurchaser());
+    }, 600);
+  }
+
+  function saveNow() {
+    window.clearTimeout(saveTimer);
+    return persistPurchaser(rememberCheckoutPurchaser());
+  }
+
   function isPayClick(event) {
     var path = event && event.composedPath ? event.composedPath() : [];
     var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
@@ -238,22 +297,38 @@
   function boot() {
     if (!currentOffer()) return;
     rememberCheckoutPurchaser();
-    document.addEventListener('input', capture, true);
-    document.addEventListener('change', capture, true);
-    document.addEventListener('keyup', capture, true);
-    document.addEventListener('blur', capture, true);
+    scheduleSave();
+    document.addEventListener('input', function (event) {
+      capture(event);
+      scheduleSave();
+    }, true);
+    document.addEventListener('change', function (event) {
+      capture(event);
+      scheduleSave();
+    }, true);
+    document.addEventListener('keyup', function (event) {
+      capture(event);
+      scheduleSave();
+    }, true);
+    document.addEventListener('blur', function (event) {
+      capture(event);
+      saveNow();
+    }, true);
     window.addEventListener('pagehide', function () {
-      rememberCheckoutPurchaser();
+      saveNow();
     });
-    window.setInterval(rememberCheckoutPurchaser, 1000);
+    window.setInterval(function () {
+      rememberCheckoutPurchaser();
+      scheduleSave();
+    }, 1000);
     document.addEventListener('click', function (event) {
       if (!isPayClick(event)) return;
-      registerPurchaser(rememberCheckoutPurchaser());
+      saveNow();
     }, true);
     document.addEventListener('submit', function (event) {
       var form = event.target;
       if (!form || !form.closest || !form.closest('.embedded-checkout')) return;
-      registerPurchaser(rememberCheckoutPurchaser());
+      saveNow();
     }, true);
   }
 
