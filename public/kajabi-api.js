@@ -1231,12 +1231,16 @@ var CourseApi = (function () {
   function reportMissingPartnerInvite(saved) {
     if (inviteNoticeSent) return;
     var id = (saved && saved.kajabiUserId) || kajabiUserId;
-    if (!id) return;
+    var email = saved && saved.email ? String(saved.email).trim().toLowerCase() : '';
+    if (!id && !email) return;
     inviteNoticeSent = true;
+    var body = {};
+    if (id) body.kajabiUserId = id;
+    if (email) body.purchaserEmail = email;
     request('/api/v1/partners/invite-shown', {
       method: 'POST',
       admin: true,
-      body: { kajabiUserId: id },
+      body: body,
     }).catch(function () {
       inviteNoticeSent = false;
     });

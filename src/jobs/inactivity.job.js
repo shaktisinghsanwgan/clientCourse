@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { env } from '../config/env.js';
 import { notifyInactiveUsers } from '../services/inactivity.service.js';
+import { notifyMissingPartnerInvites } from '../services/partner-invite-notice.service.js';
 
 let running = false;
 let task;
@@ -16,12 +17,22 @@ export function startInactivityCron() {
     if (running) return;
     running = true;
     try {
-      const summary = await notifyInactiveUsers();
-      console.log(
-        `Inactivity check finished: ${summary.checked} inactive, ${summary.notified} emailed, ${summary.skipped} already sent, ${summary.unconfigured} waiting for mail settings, ${summary.failed} failed`,
-      );
-    } catch (error) {
-      console.error(`Inactivity check failed: ${error.message}`);
+      try {
+        const summary = await notifyInactiveUsers();
+        console.log(
+          `Inactivity check finished: ${summary.checked} inactive, ${summary.notified} emailed, ${summary.skipped} already sent, ${summary.unconfigured} waiting for mail settings, ${summary.failed} failed`,
+        );
+      } catch (error) {
+        console.error(`Inactivity check failed: ${error.message}`);
+      }
+      try {
+        const summary = await notifyMissingPartnerInvites();
+        console.log(
+          `Partner invite check finished: ${summary.checked} without a partner, ${summary.notified} emailed, ${summary.skipped} waiting for the next 48 hours, ${summary.unconfigured} waiting for mail settings, ${summary.failed} failed`,
+        );
+      } catch (error) {
+        console.error(`Partner invite check failed: ${error.message}`);
+      }
     } finally {
       running = false;
     }

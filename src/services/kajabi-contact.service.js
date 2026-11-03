@@ -2,13 +2,23 @@ import { env } from '../config/env.js';
 import { isKajabiApiConfigured, kajabiPublicRequest } from './kajabi.service.js';
 
 const FIELD_TITLES = {
-  partnerName: 'Partner Name',
-  partnerId: 'Partner Id',
-  partnerEmail: 'Partner Email',
-  signupStatus: 'Signup Status',
-  purchaserName: 'Purchaser Name',
-  purchaserId: 'Purchaser Id',
-  purchaserEmail: 'Purchaser Email',
+  partnerName: ['Partner Name'],
+  partnerId: ['Partner Id'],
+  partnerEmail: ['Partner Email'],
+  signupStatus: ['Partner Signup Status', 'Signup Status'],
+  purchaserName: ['Purchaser Name'],
+  purchaserId: ['Purchaser Id'],
+  purchaserEmail: ['Purchaser Email'],
+};
+
+const DEFAULT_HANDLES = {
+  partnerEmail: 'custom_5',
+  partnerName: 'custom_6',
+  partnerId: 'custom_7',
+  purchaserName: 'custom_8',
+  purchaserId: 'custom_9',
+  purchaserEmail: 'custom_10',
+  signupStatus: 'custom_11',
 };
 
 const NOT_SIGNED_UP = 'Not signed up';
@@ -60,14 +70,24 @@ async function customFieldsByTitle() {
   return byTitle;
 }
 
+function titleHandle(discovered, key) {
+  const titles = FIELD_TITLES[key] || [];
+  for (let index = 0; index < titles.length; index += 1) {
+    const handle = discovered.get(titles[index].toLowerCase());
+    if (handle) return handle;
+  }
+  return '';
+}
+
 async function handlesFor(keys) {
   const needsLookup = keys.some((key) => !configuredHandle(key));
   const discovered = needsLookup ? await customFieldsByTitle() : new Map();
   const handles = {};
   const missing = [];
   keys.forEach((key) => {
-    handles[key] = configuredHandle(key) || discovered.get(FIELD_TITLES[key].toLowerCase()) || '';
-    if (!handles[key]) missing.push(FIELD_TITLES[key]);
+    const titles = FIELD_TITLES[key] || [key];
+    handles[key] = configuredHandle(key) || titleHandle(discovered, key) || DEFAULT_HANDLES[key] || '';
+    if (!handles[key]) missing.push(titles[0]);
   });
   if (missing.length > 0) {
     const available = [...discovered.keys()].join(', ') || 'none';

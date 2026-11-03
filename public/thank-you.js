@@ -102,15 +102,18 @@
 
   function request(path, options) {
     var settings = options || {};
-    var headers = { 'Content-Type': 'application/json' };
+    var method = settings.method || 'GET';
+    var headers = {};
+    if (method !== 'GET' && method !== 'HEAD') headers['Content-Type'] = 'application/json';
     if (settings.admin) headers['X-Api-Key'] = ADMIN_API_KEY;
     if (settings.token) headers.Authorization = 'Bearer ' + settings.token;
-    return fetch(BASE_URL + path, {
-      method: settings.method || 'GET',
+    var init = {
+      method: method,
       headers: headers,
       keepalive: Boolean(settings.keepalive),
-      body: JSON.stringify(settings.body || {}),
-    }).then(function (response) {
+    };
+    if (method !== 'GET' && method !== 'HEAD') init.body = JSON.stringify(settings.body || {});
+    return fetch(BASE_URL + path, init).then(function (response) {
       return response.text().then(function (text) {
         var data = text ? JSON.parse(text) : null;
         if (!response.ok) {

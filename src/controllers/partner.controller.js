@@ -3,7 +3,9 @@ import { getMyPartnership, getPartnerProgress, linkPartner } from '../services/p
 import { notifyPartnerInviteShown } from '../services/partner-invite-notice.service.js';
 
 export async function inviteShown(req, res) {
-  const result = await notifyPartnerInviteShown(req.valid.body.kajabiUserId);
+  const result = await notifyPartnerInviteShown(req.valid.body.kajabiUserId, {
+    purchaserEmail: req.valid.body.purchaserEmail,
+  });
   sendSuccess(res, 200, 'Partner invite checked', result);
 }
 

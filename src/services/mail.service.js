@@ -46,18 +46,19 @@ export async function sendInactivityEmail({ inactiveUser, inactiveSince, days })
   return { delivered: true };
 }
 
-export async function sendMissingPartnerInviteEmail({ purchaser, registeredAt }) {
+export async function sendMissingPartnerInviteEmail({ purchaser, registeredAt, reminderHours }) {
   if (!isMailConfigured()) {
     return { delivered: false, skipped: true };
   }
 
   const when = new Date(registeredAt).toISOString();
+  const hours = Number(reminderHours) > 0 ? Number(reminderHours) : env.PARTNER_INVITE_REMINDER_HOURS;
   const subject = `${purchaser.name} has not invited a partner`;
   const text = [
     `${purchaser.name} has not invited a partner.`,
     '',
-    `${purchaser.name} (${purchaser.email}) checked out at ${when} and still has not sent a partner invite from the thank-you page.`,
-    'They signed in without sending a partner invite.',
+    `${purchaser.name} (${purchaser.email}) checked out at ${when} and still has not sent a partner invite.`,
+    `This reminder repeats every ${hours} hours until they invite a partner.`,
   ].join('\n');
 
   await mailer().sendMail({

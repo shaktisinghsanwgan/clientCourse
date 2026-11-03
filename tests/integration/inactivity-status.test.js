@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/database.js';
 import { notifyInactiveUsers } from '../../src/services/inactivity.service.js';
-import { notifyPartnerInviteShown } from '../../src/services/partner-invite-notice.service.js';
+import { notifyMissingPartnerInvites, notifyPartnerInviteShown } from '../../src/services/partner-invite-notice.service.js';
 import { JANE, JOHN, bearer, linkJane, mockKajabi, registerPurchaser, signIn } from '../helpers.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -118,19 +118,32 @@ describe('inactivity email and live status', () => {
     expect(mail.sent.map((item) => item.inactiveUser.email).sort()).toEqual([JANE.email, JOHN.email].sort());
   });
 
-  it('emails CLIENT_EMAIL once when the invite-partner modal is shown', async () => {
+  it('emails CLIENT_EMAIL when the invite modal is shown, then again after 48 hours', async () => {
     await registerPurchaser(JOHN);
     const mail = captureMail();
-    const first = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
+    const now = new Date();
+    const first = await notifyPartnerInviteShown(JOHN.id, { send: mail.send, now });
     expect(first.status).toBe('notified');
     expect(mail.sent).toHaveLength(1);
     expect(mail.sent[0].to).toBe('client@example.com');
     expect(mail.sent[0].purchaser.email).toBe(JOHN.email);
     expect(mail.sent[0].purchaser.name).toBe(JOHN.name);
+    expect(mail.sent[0].reminderHours).toBe(48);
 
-    const second = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
-    expect(second.status).toBe('skipped');
+    const early = await notifyPartnerInviteShown(JOHN.id, {
+      send: mail.send,
+      now: new Date(now.getTime() + (47 * 60 * 60 * 1000)),
+    });
+    expect(early.status).toBe('skipped');
     expect(mail.sent).toHaveLength(1);
+
+    const again = await notifyPartnerInviteShown(JOHN.id, {
+      send: mail.send,
+      now: new Date(now.getTime() + (48 * 60 * 60 * 1000) + (60 * 1000)),
+    });
+    expect(again.status).toBe('notified');
+    expect(mail.sent).toHaveLength(2);
+    expect(await prisma.partnerInviteNotice.count()).toBe(1);
   });
 
   it('does not email when the purchaser has already invited a partner', async () => {
@@ -141,5 +154,59 @@ describe('inactivity email and live status', () => {
     const summary = await notifyPartnerInviteShown(JOHN.id, { send: mail.send });
     expect(summary.status).toBe('skipped');
     expect(mail.sent).toHaveLength(0);
+  });
+
+  it('emails every 48 hours from the scheduled check even without a Kajabi user id', async () => {
+    await registerPurchaser(JOHN);
+    await prisma.user.update({
+      where: { email: JOHN.email },
+      data: { kajabiUserId: null },
+    });
+    const mail = captureMail();
+    const now = new Date();
+
+    const first = await notifyMissingPartnerInvites({ send: mail.send, now });
+    expect(first.notified).toBe(1);
+    expect(first.failed).toBe(0);
+    expect(mail.sent).toHaveLength(1);
+    expect(mail.sent[0].to).toBe('client@example.com');
+    expect(mail.sent[0].purchaser.email).toBe(JOHN.email);
+
+    const early = await notifyMissingPartnerInvites({
+      send: mail.send,
+      now: new Date(now.getTime() + (47 * 60 * 60 * 1000)),
+    });
+    expect(early.notified).toBe(0);
+    expect(early.skipped).toBe(1);
+    expect(mail.sent).toHaveLength(1);
+
+    const again = await notifyMissingPartnerInvites({
+      send: mail.send,
+      now: new Date(now.getTime() + (48 * 60 * 60 * 1000) + (60 * 1000)),
+    });
+    expect(again.notified).toBe(1);
+    expect(mail.sent).toHaveLength(2);
+
+    const john = await signIn(JOHN.email);
+    const linked = await linkJane(john.token);
+    expect(linked.status).toBe(200);
+    const afterInvite = await notifyMissingPartnerInvites({
+      send: mail.send,
+      now: new Date(now.getTime() + (96 * 60 * 60 * 1000)),
+    });
+    expect(afterInvite.checked).toBe(0);
+    expect(afterInvite.notified).toBe(0);
+    expect(mail.sent).toHaveLength(2);
+  });
+
+  it('sends the missing-invite email from the purchaser email when Kajabi id is unknown', async () => {
+    await registerPurchaser(JOHN);
+    const mail = captureMail();
+    const summary = await notifyPartnerInviteShown('', {
+      send: mail.send,
+      purchaserEmail: JOHN.email,
+    });
+    expect(summary.status).toBe('notified');
+    expect(mail.sent[0].purchaser.email).toBe(JOHN.email);
   });
 });

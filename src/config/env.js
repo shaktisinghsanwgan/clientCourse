@@ -119,6 +119,10 @@ export const env = {
   get INACTIVITY_CRON() {
     return optional('INACTIVITY_CRON') || '15 * * * *';
   },
+  get PARTNER_INVITE_REMINDER_HOURS() {
+    const value = Number(optional('PARTNER_INVITE_REMINDER_HOURS') || 48);
+    return Number.isFinite(value) && value > 0 ? value : 48;
+  },
   get STATUS_LIVE_MINUTES() {
     const value = Number(optional('STATUS_LIVE_MINUTES') || 2);
     return Number.isFinite(value) && value > 0 ? value : 2;

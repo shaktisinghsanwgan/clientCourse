@@ -13,6 +13,7 @@ import {
   verifyPurchaseByEmail,
 } from './kajabi.service.js';
 import { syncSignedUpPartnerContacts } from './kajabi-contact.service.js';
+import { notifyPartnerInviteShown } from './partner-invite-notice.service.js';
 
 function signToken(user) {
   return jwt.sign(
@@ -120,6 +121,12 @@ export async function registerPurchaser(input) {
     if (existing) await clearPurchaserHistory(tx, existing.id);
     return tx.user.create({ data });
   });
+
+  try {
+    await notifyPartnerInviteShown(user.kajabiUserId || '', { purchaserEmail: user.email });
+  } catch (error) {
+    console.error(`Partner invite email failed for user ${user.id}: ${error.message}`);
+  }
 
   return {
     created: true,

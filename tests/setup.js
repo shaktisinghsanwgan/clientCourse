@@ -7,6 +7,7 @@ const TABLES = [
   'progress',
   'partners',
   'inactivity_notices',
+  'partner_invite_notices',
   'email_confirmations',
   'course_chapters',
   'users',
