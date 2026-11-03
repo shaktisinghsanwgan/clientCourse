@@ -100,6 +100,7 @@ export async function linkPartner(actor, input) {
 
   await syncInvitedPartnerContact({
     purchaserEmail: primary.email,
+    purchaserKajabiId: primary.kajabiUserId || '',
     partnerName: partnership.partnerName,
     partnerEmail,
     signedUp: partnership.status === 'ACTIVE' && Boolean(partnership.partnerUserId),

@@ -43,7 +43,6 @@ async function customFieldsByTitle() {
     const query = {
       'page[number]': page,
       'page[size]': 100,
-      'fields[custom_fields]': 'handle,title',
     };
     if (env.KAJABI_SITE_ID) query['filter[site_id]'] = env.KAJABI_SITE_ID;
     const body = await kajabiPublicRequest('GET', '/v1/custom_fields', { query });
@@ -71,23 +70,33 @@ async function handlesFor(keys) {
     if (!handles[key]) missing.push(FIELD_TITLES[key]);
   });
   if (missing.length > 0) {
-    console.error(`Kajabi custom fields not found: ${missing.join(', ')}`);
+    const available = [...discovered.keys()].join(', ') || 'none';
+    console.error(`Kajabi custom fields not found: ${missing.join(', ')}. Available: ${available}`);
   }
   return handles;
 }
 
-async function findContact(email) {
-  const normalized = String(email || '').trim().toLowerCase();
-  if (!normalized) return null;
+async function contactFromCustomer(customerId) {
+  const id = String(customerId || '').trim();
+  if (!id) return null;
+  const body = await kajabiPublicRequest('GET', `/v1/customers/${encodeURIComponent(id)}`, {
+    query: { include: 'contact' },
+    missingOk: true,
+  });
+  const contactId = body?.data?.relationships?.contact?.data?.id;
+  if (!contactId) return null;
+  return { id: String(contactId), customerId: id };
+}
+
+async function searchContact(email, siteId) {
   const query = {
-    'filter[search]': normalized,
+    'filter[search]': email,
     'page[size]': 10,
-    include: 'customer',
   };
-  if (env.KAJABI_SITE_ID) query['filter[site_id]'] = env.KAJABI_SITE_ID;
+  if (siteId) query['filter[site_id]'] = siteId;
   const body = await kajabiPublicRequest('GET', '/v1/contacts', { query });
   const matches = (Array.isArray(body?.data) ? body.data : []).filter((row) => {
-    return String(row?.attributes?.email || '').trim().toLowerCase() === normalized && row?.id;
+    return String(row?.attributes?.email || '').trim().toLowerCase() === email && row?.id;
   });
   if (matches.length !== 1) return null;
   const contact = matches[0];
@@ -97,24 +106,40 @@ async function findContact(email) {
   return { id: String(contact.id), customerId };
 }
 
+async function findContact(email, kajabiId) {
+  const fromCustomer = await contactFromCustomer(kajabiId);
+  if (fromCustomer) return fromCustomer;
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return null;
+  const scoped = await searchContact(normalized, env.KAJABI_SITE_ID);
+  if (scoped || !env.KAJABI_SITE_ID) return scoped;
+  return searchContact(normalized, '');
+}
+
 async function personId(email, kajabiId) {
-  const contact = await findContact(email);
+  const contact = await findContact(email, kajabiId);
   if (contact?.customerId) return contact.customerId;
   if (kajabiId) return String(kajabiId);
   if (contact?.id) return contact.id;
   return '';
 }
 
-async function writeContact(email, values, handles) {
-  const contact = await findContact(email);
-  if (!contact) return false;
+async function writeContact(email, kajabiId, values, handles) {
+  const contact = await findContact(email, kajabiId);
+  if (!contact) {
+    console.error(`Kajabi contact not found for ${email}`);
+    return false;
+  }
   const attributes = {};
   Object.entries(values).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
     if (!handles[key]) return;
     attributes[handles[key]] = String(value);
   });
-  if (Object.keys(attributes).length === 0) return false;
+  if (Object.keys(attributes).length === 0) {
+    console.error(`Kajabi contact ${contact.id} was not updated because the custom fields are missing`);
+    return false;
+  }
   await kajabiPublicRequest('PATCH', `/v1/contacts/${encodeURIComponent(contact.id)}`, {
     body: {
       data: {
@@ -137,7 +162,7 @@ export async function syncInvitedPartnerContact(input) {
   try {
     const handles = await handlesFor(['partnerName', 'partnerId', 'partnerEmail', 'signupStatus']);
     const partnerId = await personId(input.partnerEmail, '');
-    const updated = await writeContact(input.purchaserEmail, {
+    const updated = await writeContact(input.purchaserEmail, input.purchaserKajabiId, {
       partnerName: input.partnerName,
       partnerId,
       partnerEmail: input.partnerEmail,
@@ -166,7 +191,7 @@ export async function syncSignedUpPartnerContacts(input) {
     const partnerId = await personId(input.partnerEmail, input.partnerKajabiId);
     const purchaserId = await personId(input.purchaserEmail, input.purchaserKajabiId);
     try {
-      purchaser = await writeContact(input.purchaserEmail, {
+      purchaser = await writeContact(input.purchaserEmail, input.purchaserKajabiId, {
         partnerName: input.partnerName,
         partnerId,
         partnerEmail: input.partnerEmail,
@@ -176,7 +201,7 @@ export async function syncSignedUpPartnerContacts(input) {
       skipped(error, 'purchaser');
     }
     try {
-      partner = await writeContact(input.partnerEmail, {
+      partner = await writeContact(input.partnerEmail, input.partnerKajabiId, {
         purchaserName: input.purchaserName,
         purchaserId,
         purchaserEmail: input.purchaserEmail,
