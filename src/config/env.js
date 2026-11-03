@@ -64,6 +64,27 @@ export const env = {
   get KAJABI_WEBHOOK_SECRET() {
     return optional('KAJABI_WEBHOOK_SECRET');
   },
+  get KAJABI_CONTACT_FIELD_PARTNER_NAME() {
+    return optional('KAJABI_CONTACT_FIELD_PARTNER_NAME');
+  },
+  get KAJABI_CONTACT_FIELD_PARTNER_ID() {
+    return optional('KAJABI_CONTACT_FIELD_PARTNER_ID');
+  },
+  get KAJABI_CONTACT_FIELD_PARTNER_EMAIL() {
+    return optional('KAJABI_CONTACT_FIELD_PARTNER_EMAIL');
+  },
+  get KAJABI_CONTACT_FIELD_SIGNUP_STATUS() {
+    return optional('KAJABI_CONTACT_FIELD_SIGNUP_STATUS');
+  },
+  get KAJABI_CONTACT_FIELD_PURCHASER_NAME() {
+    return optional('KAJABI_CONTACT_FIELD_PURCHASER_NAME');
+  },
+  get KAJABI_CONTACT_FIELD_PURCHASER_ID() {
+    return optional('KAJABI_CONTACT_FIELD_PURCHASER_ID');
+  },
+  get KAJABI_CONTACT_FIELD_PURCHASER_EMAIL() {
+    return optional('KAJABI_CONTACT_FIELD_PURCHASER_EMAIL');
+  },
   get ADMIN_API_KEY() {
     return optional('ADMIN_API_KEY');
   },

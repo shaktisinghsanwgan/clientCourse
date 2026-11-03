@@ -227,6 +227,50 @@ export async function verifyPurchaseByEmail(email, expectedCustomerId) {
   };
 }
 
+export async function kajabiPublicRequest(method, path, options = {}) {
+  if (!isKajabiApiConfigured()) {
+    throw new ApiError(503, 'Kajabi API is not configured', 'KAJABI_API_NOT_CONFIGURED');
+  }
+  return kajabiSend(method, path, options);
+}
+
+async function kajabiSend(method, path, { query = {}, body, missingOk = false, allowRetry = true } = {}) {
+  const url = new URL(`${env.KAJABI_API_BASE_URL}${path}`);
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  const token = await getAccessToken();
+  const response = await kajabiFetch(url, {
+    method,
+    headers: {
+      Accept: 'application/vnd.api+json',
+      Authorization: `Bearer ${token}`,
+      ...(body ? { 'Content-Type': 'application/vnd.api+json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (response.status === 401 && allowRetry) {
+    resetKajabiCache();
+    await getAccessToken(true);
+    return kajabiSend(method, path, { query, body, missingOk, allowRetry: false });
+  }
+
+  if (response.status === 404 && missingOk) {
+    return null;
+  }
+
+  if (!response.ok) {
+    console.error(`Kajabi ${method} ${path} failed with status ${response.status}`);
+    throw new ApiError(502, 'Kajabi integration failure', 'KAJABI_INTEGRATION_FAILURE');
+  }
+
+  return response.json();
+}
+
 export function extractPurchaseWebhook(body) {
   const items = Array.isArray(body?.payload) ? body.payload : [];
   const customer = items.find((item) => item?.type === 'customers');

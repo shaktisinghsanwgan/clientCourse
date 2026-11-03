@@ -2,6 +2,7 @@ import { prisma } from '../config/database.js';
 import { ApiError } from '../utils/errors.js';
 import { asId, normalizeEmail } from '../utils/security.js';
 import { buildCourseSync, buildPartnerProgress } from './progress.service.js';
+import { syncInvitedPartnerContact } from './kajabi-contact.service.js';
 
 async function resolvePrimaryUser(actor, input) {
   if (input.purchaserUserId) {
@@ -49,7 +50,7 @@ export async function linkPartner(actor, input) {
     throw new ApiError(409, 'That email already belongs to a purchaser', 'DUPLICATE_PARTNER');
   }
 
-  return prisma.$transaction(async (tx) => {
+  const partnership = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM users WHERE id = ${primary.id} FOR UPDATE`;
 
     const current = await tx.partner.findUnique({ where: { primaryUserId: primary.id } });
@@ -96,6 +97,14 @@ export async function linkPartner(actor, input) {
     });
     return presentPartnership(created, primary);
   });
+
+  await syncInvitedPartnerContact({
+    purchaserEmail: primary.email,
+    partnerName: partnership.partnerName,
+    partnerEmail,
+    signedUp: partnership.status === 'ACTIVE' && Boolean(partnership.partnerUserId),
+  });
+  return partnership;
 }
 
 function presentPartnership(partnership, primary) {

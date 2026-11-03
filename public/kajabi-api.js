@@ -1118,6 +1118,8 @@ var CourseApi = (function () {
   function hideModal(modal) {
     if (modal.querySelector('.course-sync-card-stuck')) return;
     if (modal.querySelector('.course-sync-card-wait')) stopPartnerWaitPoll();
+    stopPartnershipPoll();
+    stopUnresolvedPoll();
     if (typeof modal.hidePopover === 'function') {
       try {
         if (modal.matches(':popover-open')) modal.hidePopover();
@@ -1221,6 +1223,7 @@ var CourseApi = (function () {
     modal.classList.remove('is-locked');
     revealModal(modal);
     reportMissingPartnerInvite(saved);
+    watchPartnership();
   }
 
   var inviteNoticeSent = false;
@@ -1246,7 +1249,10 @@ var CourseApi = (function () {
   function showPartnerSignupModal() {
     stopPartnerWaitPoll();
     var modal = ensureModal();
-    if (modal.classList.contains('is-open') && modal.querySelector('.course-sync-card-invite')) return;
+    if (modal.classList.contains('is-open') && modal.querySelector('.course-sync-invite-resync')) {
+      watchPartnership();
+      return;
+    }
     var card = resetCard(modal);
     card.className = 'course-sync-card course-sync-card-partner course-sync-card-invite';
     card.innerHTML = ''
@@ -1296,6 +1302,41 @@ var CourseApi = (function () {
     };
     modal.classList.remove('is-locked');
     revealModal(modal);
+    watchPartnership();
+  }
+
+  var partnershipPollTimer = null;
+
+  function stopPartnershipPoll() {
+    if (!partnershipPollTimer) return;
+    window.clearInterval(partnershipPollTimer);
+    partnershipPollTimer = null;
+  }
+
+  function watchPartnership() {
+    if (partnershipPollTimer || !kajabiUserId) return;
+    function tick() {
+      var modal = document.getElementById('course-sync-modal');
+      if (!modal || !modal.classList.contains('is-open') || !modal.querySelector('.course-sync-card-invite')) {
+        stopPartnershipPoll();
+        return;
+      }
+      lookupUser(kajabiUserId).then(function (result) {
+        if (!modal.classList.contains('is-open')) return;
+        if (partnerHasSignedUp(result)) {
+          stopPartnershipPoll();
+          markIdentity(result, kajabiUserId);
+          hideModal(modal);
+          handleKnownUser();
+          return;
+        }
+        if (purchaserWaitingForSignup(result) && modal.querySelector('.course-sync-card-add')) {
+          showPartnerSignupModal();
+        }
+      }).catch(function () {});
+    }
+    tick();
+    partnershipPollTimer = window.setInterval(tick, 4000);
   }
 
   function continueAfterIdentity(result, email) {
@@ -1343,6 +1384,7 @@ var CourseApi = (function () {
       + '</div></div>';
     modal.classList.add('is-locked');
     revealModal(modal);
+    watchUnresolvedIdentity();
     var note = card.querySelector('.course-sync-note');
     var input = card.querySelector('#course-sync-email');
     var button = card.querySelector('button');
@@ -1673,9 +1715,36 @@ var CourseApi = (function () {
     });
   }
 
+  var unresolvedPollTimer = null;
+
+  function stopUnresolvedPoll() {
+    if (!unresolvedPollTimer) return;
+    window.clearInterval(unresolvedPollTimer);
+    unresolvedPollTimer = null;
+  }
+
+  function watchUnresolvedIdentity() {
+    if (unresolvedPollTimer || !kajabiUserId) return;
+    unresolvedPollTimer = window.setInterval(function () {
+      var modal = document.getElementById('course-sync-modal');
+      if (!modal || !modal.classList.contains('is-open') || !modal.querySelector('.course-sync-card-email')) {
+        stopUnresolvedPoll();
+        return;
+      }
+      api.resolveLogin(kajabiUserId).then(function (result) {
+        if (!modal.classList.contains('is-open')) return;
+        stopUnresolvedPoll();
+        markIdentity(result, kajabiUserId);
+        hideModal(modal);
+        continueAfterIdentity(result);
+      }).catch(function () {});
+    }, 4000);
+  }
+
   function isThankYouPage() {
     var path = window.location.pathname || '';
     return /thank[-_ ]?you/i.test(path)
+      || /partner-invitation-confirmed/i.test(path)
       || /invite-your-partner-one-time-payment/i.test(path)
       || /invite-your-partner-8-monthly-payments/i.test(path);
   }

@@ -12,6 +12,7 @@ import {
   isKajabiApiConfigured,
   verifyPurchaseByEmail,
 } from './kajabi.service.js';
+import { syncSignedUpPartnerContacts } from './kajabi-contact.service.js';
 
 function signToken(user) {
   return jwt.sign(
@@ -198,7 +199,7 @@ async function authPayload(user) {
 }
 
 async function activateInvitedPartner(email) {
-  return prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw`
       SELECT id, primary_user_id, partner_user_id, partner_name, status
       FROM partners
@@ -208,10 +209,13 @@ async function activateInvitedPartner(email) {
     `;
     const invitation = rows[0];
     if (!invitation) {
-      return null;
+      return { user: null, created: false };
     }
     if (invitation.partner_user_id) {
-      return tx.user.findUnique({ where: { id: asId(invitation.partner_user_id) } });
+      return {
+        user: await tx.user.findUnique({ where: { id: asId(invitation.partner_user_id) } }),
+        created: false,
+      };
     }
 
     const primary = await tx.user.findUnique({ where: { id: asId(invitation.primary_user_id) } });
@@ -240,8 +244,21 @@ async function activateInvitedPartner(email) {
       },
     });
 
-    return user;
+    return { user, created: true, primary };
   });
+
+  if (outcome.created && outcome.user && outcome.primary) {
+    await syncSignedUpPartnerContacts({
+      purchaserEmail: outcome.primary.email,
+      purchaserName: outcome.primary.name,
+      purchaserKajabiId: outcome.primary.kajabiUserId || '',
+      partnerEmail: outcome.user.email,
+      partnerName: outcome.user.name,
+      partnerKajabiId: outcome.user.kajabiUserId || '',
+    });
+  }
+
+  return outcome.user;
 }
 
 export async function getUserById(userId) {

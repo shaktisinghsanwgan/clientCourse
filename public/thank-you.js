@@ -108,6 +108,7 @@
     return fetch(BASE_URL + path, {
       method: settings.method || 'GET',
       headers: headers,
+      keepalive: Boolean(settings.keepalive),
       body: JSON.stringify(settings.body || {}),
     }).then(function (response) {
       return response.text().then(function (text) {
@@ -138,6 +139,8 @@
     });
   }
 
+  var registerOncePromise = null;
+
   function registerPurchaser(purchaser) {
     var body = {
       name: purchaser.name,
@@ -147,10 +150,21 @@
     return request('/api/v1/users/register', {
       method: 'POST',
       admin: true,
+      keepalive: true,
       body: body,
     }).then(function (result) {
       return saveRegistered(result, purchaser);
     });
+  }
+
+  function registerOnce(purchaser) {
+    if (!registerOncePromise) {
+      registerOncePromise = registerPurchaser(purchaser).catch(function (error) {
+        registerOncePromise = null;
+        throw error;
+      });
+    }
+    return registerOncePromise;
   }
 
   function purchaserEmailOnPage() {
@@ -163,6 +177,7 @@
     return request('/api/v1/partners/link', {
       method: 'POST',
       admin: true,
+      keepalive: true,
       body: {
         purchaserEmail: email,
         partnerName: fields.name,
@@ -176,11 +191,11 @@
     var email = purchaser.email || purchaserEmailOnPage();
     var name = purchaser.name || 'Purchaser';
     if (!email) {
-      return Promise.reject(new Error('Your checkout details were not saved in this browser. Finish checkout on this device, then send the invite.'));
+      return Promise.reject(new Error('Enter the email you used at checkout in the first Email field, then send the invite again.'));
     }
     return linkByPurchaserEmail(email, fields).catch(function (error) {
       if (error.status !== 404) throw error;
-      return registerPurchaser({
+      return registerOnce({
         name: name,
         email: email,
         plan: purchaser.plan || pagePlan(),
@@ -199,6 +214,7 @@
       method: 'POST',
       admin: !purchaser.token,
       token: purchaser.token,
+      keepalive: true,
       body: {
         partnerName: partnerName,
         partnerEmail: partnerEmail,
@@ -264,13 +280,27 @@
       event.preventDefault();
       event.stopPropagation();
       var button = form.querySelector('#form-button, button[type="submit"]');
-      if (button) button.disabled = true;
-      var finish = function () {
+      var label = button ? button.textContent : '';
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Sending invite...';
+      }
+      savePartner(fields).then(function () {
+        try {
+          localStorage.setItem('courseSync.partnerInvited', fields.email.trim().toLowerCase());
+        } catch (error) {
+          /* storage can be blocked */
+        }
         form.setAttribute('data-course-sync-linked', 'true');
         if (button) button.disabled = false;
         HTMLFormElement.prototype.submit.call(form);
-      };
-      savePartner(fields).then(finish).catch(finish);
+      }).catch(function (error) {
+        if (button) {
+          button.disabled = false;
+          button.textContent = label;
+        }
+        showFormError(form, (error && error.message) || 'Could not save your partner. Try again.');
+      });
     }, true);
   }
 
@@ -335,7 +365,7 @@
         if (loginAttached === key) loginAttached = '';
         return;
       }
-      registerPurchaser(saved).then(function () {
+      registerOnce(saved).then(function () {
         return request('/api/v1/users/attach-login', {
           method: 'POST',
           admin: true,
