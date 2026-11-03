@@ -20,6 +20,7 @@ router.post('/sync', authenticate, validate(syncUserSchema), asyncHandler(userCo
 router.get('/me', authenticate, asyncHandler(userController.me));
 router.post('/login', validate(loginSchema), asyncHandler(userController.login));
 router.get('/lookup', validate(lookupSchema), asyncHandler(userController.lookup));
+router.get('/resolve-login', authenticateAdmin, validate(lookupSchema), asyncHandler(userController.resolveLogin));
 router.post('/attach-login', authenticateAdmin, validate(bindSchema), asyncHandler(userController.attachLogin));
 router.post('/bind', authenticateAdmin, validate(bindSchema), asyncHandler(userController.bind));
 router.get('/:userId', validate(userIdParamSchema), asyncHandler(userController.verify));

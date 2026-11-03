@@ -16,6 +16,19 @@ export function mockKajabi(customers) {
       return json({ access_token: 'test-token', expires_in: 3600, token_type: 'Bearer' });
     }
 
+    const customerById = parsed.pathname.match(/\/v1\/customers\/([^/]+)$/);
+    if (customerById) {
+      const customer = customers.find((item) => item.id === decodeURIComponent(customerById[1]));
+      if (!customer) return json({ errors: [{ title: 'not found' }] }, 404);
+      return json({
+        data: {
+          id: customer.id,
+          type: 'customers',
+          attributes: { name: customer.name, email: customer.email },
+        },
+      });
+    }
+
     if (parsed.pathname.endsWith('/v1/customers')) {
       const email = (parsed.searchParams.get('filter[search]') || '').toLowerCase();
       const matches = customers.filter((customer) => customer.email === email);

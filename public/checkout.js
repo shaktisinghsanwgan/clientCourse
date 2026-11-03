@@ -14,14 +14,27 @@
     },
   };
 
+  var typedEmail = '';
+  var typedName = '';
+  var checkoutStarted = false;
+
   function currentOffer() {
-    var match = window.location.pathname.match(/\/offers\/([^/]+)\/checkout/i);
-    if (!match || !OFFERS[match[1]]) return null;
-    return {
-      id: match[1],
-      plan: OFFERS[match[1]].plan,
-      thankYou: OFFERS[match[1]].thankYou,
-    };
+    var sources = [window.location.pathname, window.location.href];
+    var forms = document.querySelectorAll('form');
+    for (var index = 0; index < forms.length; index += 1) {
+      if (forms[index].action) sources.push(forms[index].action);
+    }
+    for (var sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
+      var match = String(sources[sourceIndex]).match(/\/offers\/([^/?#]+)\/checkout/i);
+      if (match && OFFERS[match[1]]) {
+        return {
+          id: match[1],
+          plan: OFFERS[match[1]].plan,
+          thankYou: OFFERS[match[1]].thankYou,
+        };
+      }
+    }
+    return null;
   }
 
   function readPurchaser() {
@@ -67,12 +80,12 @@
   }
 
   function checkoutEmail() {
-    var found = '';
+    var found = typedEmail;
     var custom = document.querySelector('pds-input[component-id="email"]');
-    if (custom) found = looksLikeEmail(custom.value);
+    if (!found && custom) found = looksLikeEmail(custom.value || custom.getAttribute('value'));
     if (!found && custom && custom.shadowRoot) {
       var inner = custom.shadowRoot.querySelector('input');
-      found = inner ? looksLikeEmail(inner.value) : '';
+      found = inner ? looksLikeEmail(inner.value || inner.getAttribute('value')) : '';
     }
     if (!found) {
       walkInputs(document, function (node) {
@@ -117,6 +130,7 @@
   }
 
   function checkoutName() {
+    if (typedName) return typedName;
     var named = document.querySelector('#name, input[testid="name-input"], input[data-testid="name-input"]');
     if (named && named.value && named.value.trim()) return named.value.trim();
     var custom = document.querySelector('pds-input[component-id="name"]');
@@ -154,8 +168,28 @@
       offerId: offer.id,
       thankYou: offer.thankYou,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch (error) { /* storage can be blocked */ }
     return next;
+  }
+
+  function watchCheckoutField(node, kind) {
+    if (!node || node.getAttribute('data-course-sync-watch') === kind) return;
+    node.setAttribute('data-course-sync-watch', kind);
+    var save = function () {
+      var value = node.value ? node.value.trim() : '';
+      if (kind === 'email') typedEmail = looksLikeEmail(value);
+      if (kind === 'name' && value) typedName = value;
+      rememberCheckoutPurchaser();
+    };
+    node.addEventListener('input', save);
+    node.addEventListener('change', save);
+  }
+
+  function bindCheckoutFields() {
+    var emailHost = document.querySelector('pds-input[component-id="email"]');
+    var emailInput = emailHost && emailHost.shadowRoot && emailHost.shadowRoot.querySelector('input');
+    watchCheckoutField(emailInput, 'email');
+    watchCheckoutField(document.querySelector('#name, input[data-testid="name-input"]'), 'name');
   }
 
   function capture(event) {
@@ -179,20 +213,26 @@
         email = looksLikeEmail(node.value);
       }
     }
+    if (name) typedName = name;
+    if (email) typedEmail = email;
     if (name || email) {
       var offer = currentOffer();
       var existing = readPurchaser() || {};
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        id: existing.id,
-        name: name || checkoutName() || existing.name || '',
-        email: rememberEmail(email || checkoutEmail() || existing.email || ''),
-        token: existing.token || '',
-        role: existing.role || '',
-        kajabiUserId: existing.kajabiUserId || '',
-        plan: offer ? offer.plan : existing.plan || '',
-        offerId: offer ? offer.id : existing.offerId || '',
-        thankYou: offer ? offer.thankYou : existing.thankYou || '',
-      }));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          id: existing.id,
+          name: name || checkoutName() || existing.name || '',
+          email: rememberEmail(email || checkoutEmail() || existing.email || ''),
+          token: existing.token || '',
+          role: existing.role || '',
+          kajabiUserId: existing.kajabiUserId || '',
+          plan: offer ? offer.plan : existing.plan || '',
+          offerId: offer ? offer.id : existing.offerId || '',
+          thankYou: offer ? offer.thankYou : existing.thankYou || '',
+        }));
+      } catch (error) {
+        /* storage can be blocked */
+      }
     }
     rememberCheckoutPurchaser();
   }
@@ -275,7 +315,9 @@
   }
 
   function saveNow() {
+    bindCheckoutFields();
     window.clearTimeout(saveTimer);
+    rememberCheckoutPurchaser();
     return persistPurchaser(rememberCheckoutPurchaser());
   }
 
@@ -287,49 +329,61 @@
       var item = path[index];
       if (!item || item.nodeType !== 1 || !item.getAttribute) continue;
       if (item.getAttribute('data-testid') === 'popup-submit-button') return true;
-      if (item.tagName === 'BUTTON' && item.type === 'submit' && item.closest && item.closest('.embedded-checkout, form.embedded-checkout__body')) {
+      if (item.tagName === 'BUTTON' && item.type === 'submit' && item.closest && item.closest('.embedded-checkout, form.embedded-checkout__body, form')) {
         return true;
       }
     }
     return false;
   }
 
+  function onPay(event) {
+    if (!isPayClick(event)) return;
+    saveNow();
+  }
+
   function boot() {
-    if (!currentOffer()) return;
-    rememberCheckoutPurchaser();
-    scheduleSave();
+    if (checkoutStarted) {
+      bindCheckoutFields();
+      if (currentOffer()) rememberCheckoutPurchaser();
+      return;
+    }
+    checkoutStarted = true;
+    bindCheckoutFields();
+    if (currentOffer()) rememberCheckoutPurchaser();
     document.addEventListener('input', function (event) {
       capture(event);
-      scheduleSave();
+      bindCheckoutFields();
+      if (currentOffer()) scheduleSave();
     }, true);
     document.addEventListener('change', function (event) {
       capture(event);
-      scheduleSave();
+      bindCheckoutFields();
+      if (currentOffer()) scheduleSave();
     }, true);
     document.addEventListener('keyup', function (event) {
       capture(event);
-      scheduleSave();
+      if (currentOffer()) scheduleSave();
     }, true);
     document.addEventListener('blur', function (event) {
       capture(event);
-      saveNow();
+      if (currentOffer()) saveNow();
     }, true);
     window.addEventListener('pagehide', function () {
-      saveNow();
+      if (currentOffer()) rememberCheckoutPurchaser();
     });
     window.setInterval(function () {
-      rememberCheckoutPurchaser();
-      scheduleSave();
-    }, 1000);
-    document.addEventListener('click', function (event) {
-      if (!isPayClick(event)) return;
+      bindCheckoutFields();
+      if (currentOffer()) rememberCheckoutPurchaser();
+    }, 500);
+    document.addEventListener('pointerdown', onPay, true);
+    document.addEventListener('mousedown', onPay, true);
+    document.addEventListener('click', onPay, true);
+    document.addEventListener('submit', function () {
+      if (!currentOffer()) return;
       saveNow();
     }, true);
-    document.addEventListener('submit', function (event) {
-      var form = event.target;
-      if (!form || !form.closest || !form.closest('.embedded-checkout')) return;
-      saveNow();
-    }, true);
+    document.addEventListener('turbo:load', boot);
+    document.addEventListener('turbo:render', boot);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

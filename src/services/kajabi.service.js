@@ -89,7 +89,7 @@ async function getAccessToken(forceRefresh = false) {
   return tokenCache.accessToken;
 }
 
-async function kajabiGet(path, query, allowRetry = true) {
+async function kajabiGet(path, query, allowRetry = true, missingOk = false) {
   const url = new URL(`${env.KAJABI_API_BASE_URL}${path}`);
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
@@ -109,7 +109,11 @@ async function kajabiGet(path, query, allowRetry = true) {
   if (response.status === 401 && allowRetry) {
     resetKajabiCache();
     await getAccessToken(true);
-    return kajabiGet(path, query, false);
+    return kajabiGet(path, query, false, missingOk);
+  }
+
+  if (response.status === 404 && missingOk) {
+    return null;
   }
 
   if (!response.ok) {
@@ -118,6 +122,24 @@ async function kajabiGet(path, query, allowRetry = true) {
   }
 
   return response.json();
+}
+
+export async function getCustomerById(customerId) {
+  if (!isKajabiApiConfigured()) {
+    throw new ApiError(503, 'Kajabi API is not configured', 'KAJABI_API_NOT_CONFIGURED');
+  }
+  const id = String(customerId || '').trim();
+  if (!id || id === '-1') return null;
+  const body = await kajabiGet(`/v1/customers/${encodeURIComponent(id)}`, {
+    'fields[customers]': 'name,email',
+  }, true, true);
+  const email = String(body?.data?.attributes?.email || '').trim().toLowerCase();
+  if (!body?.data?.id || !email) return null;
+  return {
+    id: String(body.data.id),
+    email,
+    name: body.data.attributes?.name || '',
+  };
 }
 
 function exactCustomer(records, email) {

@@ -6,6 +6,7 @@ import {
   syncAuthenticatedUser,
   attachCheckoutLogin,
   bindKajabiIdentity,
+  resolveLoginByKajabiCustomerId,
   updateUserAccount,
   verifyByKajabiUserId,
   verifyUserRole,
@@ -28,6 +29,12 @@ export async function me(req, res) {
 export async function login(req, res) {
   const result = await loginByEmail(req.valid.body.email);
   sendSuccess(res, 200, 'Signed in', result);
+}
+
+export async function resolveLogin(req, res) {
+  const result = await resolveLoginByKajabiCustomerId(req.valid.query.kajabiUserId);
+  const message = result.isPurchaser ? 'Purchaser' : 'Partner';
+  sendSuccess(res, 200, message, result);
 }
 
 export async function lookup(req, res) {

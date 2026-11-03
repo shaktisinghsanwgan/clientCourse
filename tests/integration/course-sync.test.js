@@ -298,6 +298,39 @@ describe('partner course synchronization', () => {
     expect(unknown.body.message).toBe('User not found');
   });
 
+  it('resolves purchaser and partner sign-in from the Kajabi public customer id', async () => {
+    await registerPurchaser(JOHN);
+    const john = await signIn('john@example.com');
+    await linkJane(john.token);
+    await signIn('jane@example.com');
+    await prisma.user.update({ where: { email: JOHN.email }, data: { kajabiUserId: null } });
+    await prisma.user.update({ where: { email: JANE.email }, data: { kajabiUserId: null } });
+
+    const purchaser = await request(app)
+      .get('/api/v1/users/resolve-login')
+      .query({ kajabiUserId: JOHN.id })
+      .set('x-api-key', process.env.ADMIN_API_KEY);
+    expect(purchaser.status).toBe(200);
+    expect(purchaser.body.message).toBe('Purchaser');
+    expect(purchaser.body.data.email).toBe(JOHN.email);
+    expect(purchaser.body.data.user.kajabiUserId).toBe(JOHN.id);
+
+    const partner = await request(app)
+      .get('/api/v1/users/resolve-login')
+      .query({ kajabiUserId: JANE.id })
+      .set('x-api-key', process.env.ADMIN_API_KEY);
+    expect(partner.status).toBe(200);
+    expect(partner.body.message).toBe('Partner');
+    expect(partner.body.data.email).toBe(JANE.email);
+
+    const unknown = await request(app)
+      .get('/api/v1/users/resolve-login')
+      .query({ kajabiUserId: '999999' })
+      .set('x-api-key', process.env.ADMIN_API_KEY);
+    expect(unknown.status).toBe(404);
+    expect(unknown.body.errorCode).toBe('IDENTITY_NOT_FOUND');
+  });
+
   it('saves the thank-you cookie on the checkout user and recognizes that login later', async () => {
     const registration = await registerPurchaser(JOHN);
     expect(registration.status).toBe(201);

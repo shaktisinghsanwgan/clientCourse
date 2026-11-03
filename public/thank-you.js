@@ -80,6 +80,26 @@
     field.style.background = '#f4f1ee';
   }
 
+  function fillPurchaserEmail() {
+    lockPurchaserEmail();
+    var field = purchaserEmailField();
+    if (field && field.value && field.value.indexOf('@') > 0) return;
+    var id = readCookie('rl_user_id');
+    if (!id) return;
+    request('/api/v1/users/lookup?kajabiUserId=' + encodeURIComponent(id)).then(function (result) {
+      var data = (result && result.data) || {};
+      var email = String(data.email || '').trim().toLowerCase();
+      if (email.indexOf('@') < 1) return;
+      var saved = readPurchaser() || {};
+      saved.email = email;
+      saved.name = saved.name || data.name || '';
+      saved.kajabiUserId = id;
+      if (data.userId) saved.id = data.userId;
+      writePurchaser(saved);
+      lockPurchaserEmail();
+    }).catch(function () {});
+  }
+
   function request(path, options) {
     var settings = options || {};
     var headers = { 'Content-Type': 'application/json' };
@@ -240,23 +260,17 @@
     form.addEventListener('submit', function (event) {
       if (form.getAttribute('data-course-sync-linked') === 'true') return;
       var fields = inviteFields(form);
-      if (!fields.allowed) return;
+      if (!fields.allowed || !fields.name || !fields.email) return;
       event.preventDefault();
       event.stopPropagation();
-      if (!fields.name || !fields.email) {
-        showFormError(form, 'Enter your partner name and email.');
-        return;
-      }
       var button = form.querySelector('#form-button, button[type="submit"]');
       if (button) button.disabled = true;
-      savePartner(fields).then(function () {
+      var finish = function () {
         form.setAttribute('data-course-sync-linked', 'true');
         if (button) button.disabled = false;
         HTMLFormElement.prototype.submit.call(form);
-      }).catch(function (error) {
-        if (button) button.disabled = false;
-        showFormError(form, error.message || 'Could not link your partner.');
-      });
+      };
+      savePartner(fields).then(finish).catch(finish);
     }, true);
   }
 
@@ -341,18 +355,145 @@
     });
   }
 
+  function currentOffer() {
+    var offers = {
+      x9qWfn6F: { plan: 'one_time', thankYou: PAGES.one_time },
+      QR6K2fbh: { plan: 'eight_month', thankYou: PAGES.eight_month },
+    };
+    var match = window.location.pathname.match(/\/offers\/([^/]+)\/checkout/i);
+    if (!match || !offers[match[1]]) return null;
+    return {
+      id: match[1],
+      plan: offers[match[1]].plan,
+      thankYou: offers[match[1]].thankYou,
+    };
+  }
+
+  function checkoutEmailValue() {
+    var found = '';
+    var custom = document.querySelector('pds-input[component-id="email"]');
+    if (custom && custom.value) found = String(custom.value).trim().toLowerCase();
+    if (found.indexOf('@') < 1 && custom && custom.shadowRoot) {
+      var inner = custom.shadowRoot.querySelector('input');
+      if (inner && inner.value) found = inner.value.trim().toLowerCase();
+    }
+    if (found.indexOf('@') < 1) {
+      var emailInput = document.querySelector('#email');
+      if (emailInput && emailInput.value) found = emailInput.value.trim().toLowerCase();
+    }
+    return found.indexOf('@') > 0 ? found : '';
+  }
+
+  function checkoutNameValue() {
+    var named = document.querySelector('#name, input[data-testid="name-input"]');
+    return named && named.value ? named.value.trim() : '';
+  }
+
+  function rememberCheckout() {
+    var offer = currentOffer();
+    if (!offer) return null;
+    var existing = readPurchaser() || {};
+    var email = checkoutEmailValue() || existing.email || '';
+    var name = checkoutNameValue() || existing.name || '';
+    if (!email && !name) return existing.email ? existing : null;
+    if (email) {
+      try { localStorage.setItem(EMAIL_KEY, email); } catch (error) { /* storage can be blocked */ }
+    }
+    return writePurchaser({
+      id: existing.id,
+      name: name,
+      email: email,
+      token: existing.token || '',
+      role: existing.role || '',
+      kajabiUserId: existing.kajabiUserId || '',
+      plan: offer.plan,
+      offerId: offer.id,
+      thankYou: offer.thankYou,
+    });
+  }
+
+  function bootCheckout() {
+    var savedCheckoutKey = '';
+    var typedEmail = '';
+    var typedName = '';
+    function readCheckoutFields() {
+      var emailHost = document.querySelector('pds-input[component-id="email"]');
+      var emailInput = emailHost && emailHost.shadowRoot && emailHost.shadowRoot.querySelector('input');
+      var email = typedEmail || checkoutEmailValue();
+      if (!email && emailInput) {
+        email = String(emailInput.value || '').trim().toLowerCase();
+      }
+      var name = typedName || checkoutNameValue();
+      return { email: email.indexOf('@') > 0 ? email : '', name: name };
+    }
+    function watch(node, kind) {
+      if (!node || node.getAttribute('data-course-sync-watch')) return;
+      node.setAttribute('data-course-sync-watch', '1');
+      node.addEventListener('input', function () {
+        var value = node.value ? node.value.trim() : '';
+        if (kind === 'email') typedEmail = value.toLowerCase();
+        if (kind === 'name') typedName = value;
+        rememberCheckout();
+      });
+    }
+    function bindFields() {
+      var emailHost = document.querySelector('pds-input[component-id="email"]');
+      var emailInput = emailHost && emailHost.shadowRoot && emailHost.shadowRoot.querySelector('input');
+      watch(emailInput, 'email');
+      watch(document.querySelector('#name'), 'name');
+    }
+    function saveCheckoutUser() {
+      var draft = rememberCheckout();
+      if (!draft || !draft.email || !draft.name) return;
+      var key = draft.email + '\n' + draft.name + '\n' + draft.plan;
+      if (key === savedCheckoutKey) return;
+      savedCheckoutKey = key;
+      registerPurchaser(draft).catch(function () {
+        savedCheckoutKey = '';
+      });
+    }
+    bindFields();
+    rememberCheckout();
+    document.addEventListener('input', function () {
+      bindFields();
+      rememberCheckout();
+    }, true);
+    document.addEventListener('pointerdown', function (event) {
+      var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
+      var button = node && node.closest ? node.closest('button') : null;
+      if (!button || button.getAttribute('data-testid') !== 'popup-submit-button') return;
+      var fields = readCheckoutFields();
+      if (fields.email) typedEmail = fields.email;
+      if (fields.name) typedName = fields.name;
+      rememberCheckout();
+      saveCheckoutUser();
+    }, true);
+    window.setInterval(function () {
+      bindFields();
+      rememberCheckout();
+      saveCheckoutUser();
+    }, 500);
+  }
+
   function boot() {
+    if (currentOffer()) {
+      bootCheckout();
+      return;
+    }
     if (!isInvitePage()) return;
     if (redirectIfNeeded()) return;
     lockPurchaserEmail();
     watchForm();
+    fillPurchaserEmail();
     attachCheckoutLogin();
     var tries = 0;
     window.setInterval(function () {
-      lockPurchaserEmail();
       if (!formBound) watchForm();
       tries += 1;
-      if (tries <= 20) attachCheckoutLogin();
+      if (tries <= 20) {
+        fillPurchaserEmail();
+        attachCheckoutLogin();
+      }
     }, 500);
   }
 

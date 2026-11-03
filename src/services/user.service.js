@@ -8,6 +8,7 @@ import { asId, normalizeEmail } from '../utils/security.js';
 import { touchActivity } from './activity.service.js';
 import {
   extractPurchaseWebhook,
+  getCustomerById,
   isKajabiApiConfigured,
   verifyPurchaseByEmail,
 } from './kajabi.service.js';
@@ -296,6 +297,36 @@ function rolePayload(user) {
     isPurchaser: user.role === 'PRIMARY',
     isPartner: user.role === 'PARTNER',
   };
+}
+
+export async function resolveLoginByKajabiCustomerId(customerId) {
+  const kajabiUserId = String(customerId || '').trim();
+  const linked = await prisma.user.findUnique({ where: { kajabiUserId } });
+  if (linked && linked.status === 'ACTIVE') {
+    return {
+      ...(await authPayload(linked)),
+      ...rolePayload(linked),
+    };
+  }
+
+  const customer = await getCustomerById(kajabiUserId);
+  if (!customer?.email) {
+    throw new ApiError(404, 'Kajabi customer was not found for this sign-in', 'IDENTITY_NOT_FOUND');
+  }
+
+  let user = await prisma.user.findUnique({ where: { email: customer.email } });
+  if (!user) {
+    const invitation = await prisma.partner.findUnique({ where: { partnerEmail: customer.email } });
+    if (invitation) {
+      await loginByEmail(customer.email);
+      user = await prisma.user.findUnique({ where: { email: customer.email } });
+    }
+  }
+  if (!user || user.status !== 'ACTIVE') {
+    throw new ApiError(404, 'Account not found', 'IDENTITY_NOT_FOUND');
+  }
+
+  return attachCheckoutLogin({ email: user.email, kajabiUserId });
 }
 
 export async function attachCheckoutLogin(input) {
