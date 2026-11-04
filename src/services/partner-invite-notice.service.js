@@ -134,7 +134,7 @@ export async function notifyMissingPartnerInvites({
   };
 
   if (summary.unconfigured > 0) {
-    console.warn('Partner invite emails were not sent because SMTP_HOST, SMTP_FROM, or CLIENT_EMAIL is not configured');
+    console.warn('Partner invite emails were not sent because RESEND_API_KEY, RESEND_FROM, or CLIENT_EMAIL is not configured');
   }
 
   return summary;

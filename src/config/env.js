@@ -103,6 +103,12 @@ export const env = {
   get SMTP_FROM() {
     return optional('SMTP_FROM');
   },
+  get RESEND_API_KEY() {
+    return optional('RESEND_API_KEY');
+  },
+  get RESEND_FROM() {
+    return optional('RESEND_FROM') || optional('SMTP_FROM');
+  },
   get CLIENT_EMAIL() {
     return optional('CLIENT_EMAIL').toLowerCase();
   },

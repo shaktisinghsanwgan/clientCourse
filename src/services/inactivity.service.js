@@ -96,7 +96,7 @@ export async function notifyInactiveUsers({
   };
 
   if (summary.unconfigured > 0) {
-    console.warn('Inactivity emails were not sent because SMTP_HOST, SMTP_FROM, or CLIENT_EMAIL is not configured');
+    console.warn('Inactivity emails were not sent because RESEND_API_KEY, RESEND_FROM, or CLIENT_EMAIL is not configured');
   }
 
   return summary;

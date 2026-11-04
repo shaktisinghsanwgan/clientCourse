@@ -1,24 +1,28 @@
-import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 
-let transport;
-
 export function isMailConfigured() {
-  return Boolean(env.SMTP_HOST && env.SMTP_FROM && env.CLIENT_EMAIL);
+  return Boolean(env.RESEND_API_KEY && env.RESEND_FROM && env.CLIENT_EMAIL);
 }
 
-function mailer() {
-  if (!transport) {
-    transport = nodemailer.createTransport({
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      secure: env.SMTP_SECURE,
-      auth: env.SMTP_USER
-        ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
-        : undefined,
-    });
+async function sendEmail({ subject, text }) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.RESEND_FROM,
+      to: [env.CLIENT_EMAIL],
+      subject,
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Resend email failed (${response.status}): ${body}`);
   }
-  return transport;
 }
 
 export async function sendInactivityEmail({ inactiveUser, inactiveSince, days }) {
@@ -36,13 +40,7 @@ export async function sendInactivityEmail({ inactiveUser, inactiveSince, days })
     `They have been inactive for more than ${days} days.`,
   ].join('\n');
 
-  await mailer().sendMail({
-    from: env.SMTP_FROM,
-    to: env.CLIENT_EMAIL,
-    subject,
-    text,
-  });
-
+  await sendEmail({ subject, text });
   return { delivered: true };
 }
 
@@ -61,12 +59,6 @@ export async function sendMissingPartnerInviteEmail({ purchaser, registeredAt, r
     `This reminder repeats every ${hours} hours until they invite a partner.`,
   ].join('\n');
 
-  await mailer().sendMail({
-    from: env.SMTP_FROM,
-    to: env.CLIENT_EMAIL,
-    subject,
-    text,
-  });
-
+  await sendEmail({ subject, text });
   return { delivered: true };
 }
