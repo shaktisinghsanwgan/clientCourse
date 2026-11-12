@@ -99,6 +99,11 @@ var CourseApi = (function () {
     return Boolean(error && (error.status === 404 || code === 'IDENTITY_NOT_FOUND' || /user not found/i.test(error.message || '')));
   }
 
+  function isRateLimited(error) {
+    var code = error && error.body && error.body.errorCode;
+    return Boolean(error && (error.status === 429 || code === 'RATE_LIMITED'));
+  }
+
   function isLessonPage() {
     return /\/posts\/\d+/.test(window.location.pathname) || Boolean(document.querySelector('.mark-as-complete, .btn--completion'));
   }
@@ -282,6 +287,10 @@ var CourseApi = (function () {
       + '#course-sync-modal ul{margin:0 0 10px;padding-left:18px;}'
       + '#course-sync-modal li{margin:0 0 4px;line-height:1.35;}'
       + '#course-sync-modal label{display:block;margin:8px 0 4px;font-size:14px;font-weight:700;}'
+      + '#course-sync-modal .course-sync-rate-label{margin:12px 0 6px;font-weight:700;}'
+      + '#course-sync-modal .course-sync-stars{display:flex;gap:8px;margin:0 0 12px;}'
+      + '#course-sync-modal .course-sync-star{width:42px;height:42px;border:1px solid #e6d5cc;border-radius:10px;background:#fff;color:#c45c78;font-size:22px;line-height:1;cursor:pointer;}'
+      + '#course-sync-modal .course-sync-star.is-on{background:#7a3048;color:#fff;border-color:#7a3048;}'
       + '#course-sync-modal input{width:100%;box-sizing:border-box;border:1px solid #d9cfc6;border-radius:8px;padding:10px 12px;font-size:16px;}'
       + '#course-sync-modal input.course-sync-input-error{border-color:#d32f2f !important;box-shadow:0 0 0 1px #d32f2f;}'
       + '#course-sync-modal button{margin-top:12px;border:0;border-radius:999px;background:#7a3048;color:#fff;padding:10px 18px;font-size:16px;cursor:pointer;}'
@@ -976,6 +985,20 @@ var CourseApi = (function () {
       + '</svg>';
   }
 
+  function ratedWeeks() {
+    try {
+      return JSON.parse(localStorage.getItem('courseSync.weekRatings') || '{}') || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function rememberRating(week, rating) {
+    var saved = ratedWeeks();
+    saved[String(week)] = rating;
+    localStorage.setItem('courseSync.weekRatings', JSON.stringify(saved));
+  }
+
   function showWeekComplete(weekNumber, person, nextHref) {
     stopPartnerWaitPoll();
     if (stuckModalOpen()) return;
@@ -998,6 +1021,11 @@ var CourseApi = (function () {
     var calloutBody = next
       ? 'You can now start the next set of lessons together.'
       : 'You have finished every week together.';
+    var alreadyRated = Boolean(ratedWeeks()[String(week)]);
+    var stars = '';
+    for (var star = 1; star <= 5; star += 1) {
+      stars += '<button type="button" class="course-sync-star" data-rating="' + star + '" aria-label="' + star + (star === 1 ? ' star' : ' stars') + '">&#9733;</button>';
+    }
     var card = modal.querySelector('.course-sync-card');
     card.className = 'course-sync-card course-sync-card-partner';
     card.innerHTML = ''
@@ -1013,7 +1041,8 @@ var CourseApi = (function () {
       + '<div class="course-sync-panel-head"><div><h3>Week ' + week + ' Progress</h3><p>All lessons completed by both partners</p></div>'
       + '<div class="course-sync-ring is-complete" style="--p:100"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
       + '<ul class="course-sync-lessons">' + rows + '</ul>'
-      + '<button type="button" class="course-sync-close">Close</button>'
+      + (alreadyRated ? '' : '<p class="course-sync-rate-label">Rate Week ' + week + '</p><div class="course-sync-stars">' + stars + '</div><p class="course-sync-sync-note" hidden></p>')
+      + '<button type="button" class="course-sync-close"' + (alreadyRated ? '' : ' disabled') + '>' + (alreadyRated ? 'Close' : 'Submit rating') + '</button>'
       + '</div></div>';
     var destination = nextHref || (next ? nextModuleHref(playlistRoot()) : '');
     function closeComplete() {
@@ -1021,7 +1050,43 @@ var CourseApi = (function () {
       if (destination) window.location.href = destination;
     }
     card.querySelector('.course-sync-x').onclick = closeComplete;
-    card.querySelector('.course-sync-close').onclick = closeComplete;
+    var submit = card.querySelector('.course-sync-close');
+    if (alreadyRated) {
+      submit.onclick = closeComplete;
+    } else {
+      var selected = 0;
+      var note = card.querySelector('.course-sync-sync-note');
+      var starButtons = card.querySelectorAll('.course-sync-star');
+      for (var index = 0; index < starButtons.length; index += 1) {
+        starButtons[index].onclick = function () {
+          selected = Number(this.getAttribute('data-rating'));
+          for (var itemIndex = 0; itemIndex < starButtons.length; itemIndex += 1) {
+            starButtons[itemIndex].classList.toggle('is-on', Number(starButtons[itemIndex].getAttribute('data-rating')) <= selected);
+          }
+          submit.disabled = false;
+          note.hidden = true;
+        };
+      }
+      submit.onclick = function () {
+        if (!selected || !kajabiUserId) {
+          note.hidden = false;
+          note.textContent = 'Choose a rating from 1 to 5.';
+          return;
+        }
+        submit.disabled = true;
+        request('/api/v1/course/week-rating', {
+          method: 'POST',
+          body: { kajabiUserId: kajabiUserId, weekNumber: week, rating: selected },
+        }).then(function () {
+          rememberRating(week, selected);
+          closeComplete();
+        }).catch(function (error) {
+          submit.disabled = false;
+          note.hidden = false;
+          note.textContent = error.message || 'Could not save your rating.';
+        });
+      };
+    }
     modal.classList.remove('is-locked');
     revealModal(modal);
   }
@@ -1340,7 +1405,7 @@ var CourseApi = (function () {
       }).catch(function () {});
     }
     tick();
-    partnershipPollTimer = window.setInterval(tick, 4000);
+    partnershipPollTimer = window.setInterval(tick, 30000);
   }
 
   function continueAfterIdentity(result, email) {
@@ -1742,7 +1807,7 @@ var CourseApi = (function () {
         hideModal(modal);
         continueAfterIdentity(result);
       }).catch(function () {});
-    }, 4000);
+    }, 30000);
   }
 
   function isThankYouPage() {
@@ -1854,6 +1919,11 @@ var CourseApi = (function () {
         acceptLogin(result, id);
       }).catch(function (error) {
         if (attempt !== loginAttempt) return;
+        if (isRateLimited(error)) {
+          if (identityReady) handleKnownUser();
+          else window.setTimeout(tick, 30000);
+          return;
+        }
         if (!isMissingIdentity(error)) {
           showModal('Could not check your account', error.message);
           return;
@@ -1869,6 +1939,11 @@ var CourseApi = (function () {
           var code = resolveError && resolveError.body && resolveError.body.errorCode;
           if (resolveError.status === 503 || code === 'KAJABI_API_NOT_CONFIGURED') {
             showModal('Could not check your account', 'Kajabi sign-in could not be checked. Try again in a moment.');
+            return;
+          }
+          if (isRateLimited(resolveError)) {
+            if (identityReady) handleKnownUser();
+            else window.setTimeout(tick, 30000);
             return;
           }
           if (!isMissingIdentity(resolveError)) {

@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { ApiError } from '../utils/errors.js';
 import { isKajabiApiConfigured, kajabiPublicRequest } from './kajabi.service.js';
 
 const FIELD_TITLES = {
@@ -175,6 +176,24 @@ async function writeContact(email, kajabiId, values, handles) {
 function skipped(error, label) {
   console.error(`Kajabi ${label} contact update skipped`, error instanceof Error ? error.message : error);
   return { updated: false };
+}
+
+export async function saveWeekRatingContact({ email, kajabiId, role, weekNumber, rating }) {
+  if (!isKajabiApiConfigured()) {
+    throw new ApiError(503, 'Kajabi API is not configured', 'KAJABI_API_NOT_CONFIGURED');
+  }
+  const roleLabel = role === 'PRIMARY' ? 'Purchaser' : 'Partner';
+  const title = `Week ${weekNumber} Rating ${roleLabel}`;
+  const discovered = await customFieldsByTitle();
+  const handle = discovered.get(title.toLowerCase());
+  if (!handle) {
+    throw new ApiError(502, `Kajabi custom field "${title}" was not found`, 'KAJABI_FIELD_MISSING');
+  }
+  const updated = await writeContact(email, kajabiId, { rating: String(rating) }, { rating: handle });
+  if (!updated) {
+    throw new ApiError(404, 'Kajabi contact was not found for this account', 'IDENTITY_NOT_FOUND');
+  }
+  return { field: title, handle, rating: String(rating) };
 }
 
 export async function syncInvitedPartnerContact(input) {

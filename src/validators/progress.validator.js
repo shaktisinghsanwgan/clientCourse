@@ -25,6 +25,16 @@ export const purchaserEmailQuerySchema = z.object({
   }).passthrough(),
 });
 
+export const weekRatingSchema = z.object({
+  body: z.object({
+    kajabiUserId: z.string().trim().min(1).max(255),
+    weekNumber: z.coerce.number().int().min(1).max(8),
+    rating: z.coerce.number().int().min(1).max(5),
+  }).strict(),
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 export const weekParamSchema = z.object({
   body: z.object({}).passthrough(),
   params: z.object({

@@ -32,9 +32,9 @@ app.use(cors({
 
 app.use(express.json({ limit: '100kb' }));
 
-app.use(rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => env.NODE_ENV === 'test',
@@ -45,7 +45,8 @@ app.use(rateLimit({
       errorCode: 'RATE_LIMITED',
     });
   },
-}));
+});
+app.use('/api', apiLimiter);
 
 app.get('/api/v1/health', asyncHandler(async (req, res) => {
   try {

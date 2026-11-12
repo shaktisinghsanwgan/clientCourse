@@ -1,4 +1,6 @@
+import request from 'supertest';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { app } from '../../src/app.js';
 import { resetKajabiContactCache } from '../../src/services/kajabi-contact.service.js';
 import {
   JANE,
@@ -153,5 +155,25 @@ describe('Kajabi contact custom fields', () => {
     const jane = await signIn(JANE.email);
     expect(jane.user.role).toBe('PARTNER');
     expect(jane.partnership.status).toBe('ACTIVE');
+  });
+
+  it('saves a week rating on the matching Kajabi custom field', async () => {
+    const patches = [];
+    installContactMock(patches, {
+      data: CUSTOM_FIELDS.data.concat([
+        { id: '12', type: 'custom_fields', attributes: { handle: 'custom_12', title: 'Week 1 Rating Purchaser' } },
+        { id: '13', type: 'custom_fields', attributes: { handle: 'custom_13', title: 'Week 1 Rating Partner' } },
+      ]),
+      meta: { total_pages: 1, total_count: 9, current_page: 1 },
+    });
+    await registerPurchaser(JOHN);
+    const saved = await request(app).post('/api/v1/course/week-rating').send({
+      kajabiUserId: JOHN.id,
+      weekNumber: 1,
+      rating: 5,
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.data.field).toBe('Week 1 Rating Purchaser');
+    expect(patches[patches.length - 1].body.data.attributes).toEqual({ custom_12: '5' });
   });
 });
