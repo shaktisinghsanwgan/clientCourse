@@ -374,6 +374,7 @@
     if (event.key === 'Escape' && !modal.hidden) modal.hidden = true;
   });
 
+  var requestedWeek = Number(new URLSearchParams(window.location.search).get('week'));
   if (!token) {
     showError('This worksheet link is invalid or has expired.');
     return;
@@ -381,7 +382,7 @@
   request('').then(function (data) {
     loader.hidden = true;
     app.hidden = false;
-    selectedWeek = data.progress.currentWeek || 1;
+    selectedWeek = requestedWeek >= 1 && requestedWeek <= 8 ? requestedWeek : (data.progress.currentWeek || 1);
     openWeek = selectedWeek;
     applyState(data);
   }).catch(function (error) {

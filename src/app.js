@@ -102,6 +102,11 @@ function sendPage(res, fileName) {
 }
 
 app.get('/worksheets/:token', (req, res) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://www.reignitesex.com https://reignitesex.com https://*.kajabi.com",
+  );
   sendPage(res, 'worksheets/index.html');
 });
 app.get(['/admin/participants', '/admin/participants/:participantId'], (req, res) => {

@@ -1,5 +1,6 @@
 import { sendSuccess } from '../utils/response.js';
-import { participantFromToken } from '../services/portal-link.service.js';
+import { ensurePortalLink, participantFromToken, publicBaseUrl } from '../services/portal-link.service.js';
+import { getUserByKajabiId } from '../services/user.service.js';
 import {
   buildPortalState,
   deleteWorksheetFile,
@@ -14,6 +15,15 @@ import {
 
 async function participant(req) {
   return participantFromToken(req.valid.params.token);
+}
+
+export async function portalLink(req, res) {
+  const user = await getUserByKajabiId(req.valid.query.kajabiUserId);
+  const link = await ensurePortalLink(user, publicBaseUrl(req));
+  sendSuccess(res, 200, 'Worksheet portal link', {
+    portalUrl: link.portalUrl,
+    role: link.role,
+  });
 }
 
 export async function showPortal(req, res) {

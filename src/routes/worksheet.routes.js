@@ -5,6 +5,7 @@ import { worksheetUpload } from '../middleware/upload.middleware.js';
 import {
   checklistSchema,
   portalFileSchema,
+  portalLinkQuerySchema,
   portalTokenSchema,
   portalWeekSchema,
   ratingDraftSchema,
@@ -23,6 +24,7 @@ function requireUpload(req, res, next) {
   next();
 }
 
+router.get('/link', validate(portalLinkQuerySchema), asyncHandler(worksheetController.portalLink));
 router.get('/:token/files/:fileId', validate(portalFileSchema), asyncHandler(worksheetController.downloadWorksheet));
 router.delete('/:token/files/:fileId', validate(portalFileSchema), asyncHandler(worksheetController.removeWorksheet));
 router.post(

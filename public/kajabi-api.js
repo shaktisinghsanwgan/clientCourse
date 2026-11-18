@@ -292,6 +292,12 @@ var CourseApi = (function () {
       + '#course-sync-modal button.course-sync-star{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;min-width:42px;margin:0;padding:0;border:1px solid #e6d5cc;border-radius:10px;background:#fff;color:#c45c78;font-size:0;line-height:0;cursor:pointer;}'
       + '#course-sync-modal button.course-sync-star svg{display:block !important;width:20px !important;height:20px !important;min-width:20px !important;min-height:20px !important;max-width:20px !important;max-height:20px !important;margin:0 !important;}'
       + '#course-sync-modal .course-sync-star.is-on{background:#7a3048;color:#fff;border-color:#7a3048;}'
+      + '#course-sync-modal .course-sync-card-portal{width:min(880px,100%);height:min(920px,calc(100vh - 32px));max-height:calc(100vh - 32px);padding:0;overflow:hidden;background:#fffaf6;display:flex;flex-direction:column;}'
+      + '#course-sync-modal .course-sync-portal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #eadfd8;}'
+      + '#course-sync-modal .course-sync-portal-bar .course-sync-x{position:static;margin:0;}'
+      + '#course-sync-modal iframe.course-sync-portal-frame{display:block !important;flex:1 1 auto !important;width:100% !important;height:100% !important;min-height:420px !important;border:0 !important;background:#fffaf6 !important;}'
+      + '#course-sync-modal .course-sync-rate-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;}'
+      + '#course-sync-modal .course-sync-later{background:#fff !important;color:#7a3048 !important;border:1px solid #e4c9d2 !important;}'
       + '#course-sync-modal input{width:100%;box-sizing:border-box;border:1px solid #d9cfc6;border-radius:8px;padding:10px 12px;font-size:16px;}'
       + '#course-sync-modal input.course-sync-input-error{border-color:#d32f2f !important;box-shadow:0 0 0 1px #d32f2f;}'
       + '#course-sync-modal button{margin-top:12px;border:0;border-radius:999px;background:#7a3048;color:#fff;padding:10px 18px;font-size:16px;cursor:pointer;}'
@@ -986,18 +992,34 @@ var CourseApi = (function () {
       + '</svg>';
   }
 
-  function ratedWeeks() {
-    try {
-      return JSON.parse(localStorage.getItem('courseSync.weekRatings') || '{}') || {};
-    } catch (error) {
-      return {};
-    }
+  function showPortalModal(url, onClose) {
+    var modal = ensureModal();
+    var card = modal.querySelector('.course-sync-card');
+    card.className = 'course-sync-card course-sync-card-portal';
+    card.innerHTML = ''
+      + '<div class="course-sync-portal-bar"><strong>Weekly ratings</strong>'
+      + '<button type="button" class="course-sync-x" aria-label="Close">&times;</button></div>'
+      + '<iframe class="course-sync-portal-frame" title="Weekly ratings and worksheets" src="' + escapeHtml(url) + '"></iframe>';
+    card.querySelector('.course-sync-x').onclick = function () {
+      hideModal(modal);
+      if (onClose) onClose();
+    };
+    modal.classList.remove('is-locked');
+    revealModal(modal);
   }
 
-  function rememberRating(week, rating) {
-    var saved = ratedWeeks();
-    saved[String(week)] = rating;
-    localStorage.setItem('courseSync.weekRatings', JSON.stringify(saved));
+  function openWorksheetPortal(week, onClose) {
+    if (!kajabiUserId) {
+      showModal('Ratings are not ready', 'Sign in again so we can open your ratings.');
+      return Promise.resolve();
+    }
+    return request('/api/v1/worksheets/link?kajabiUserId=' + encodeURIComponent(kajabiUserId)).then(function (result) {
+      var payload = result && result.data ? result.data : {};
+      var url = payload.portalUrl || '';
+      if (!url) throw new Error('Your ratings link is not ready yet.');
+      if (week) url += (url.indexOf('?') === -1 ? '?' : '&') + 'week=' + encodeURIComponent(week);
+      showPortalModal(url, onClose);
+    });
   }
 
   function showWeekComplete(weekNumber, person, nextHref) {
@@ -1022,11 +1044,6 @@ var CourseApi = (function () {
     var calloutBody = next
       ? 'You can now start the next set of lessons together.'
       : 'You have finished every week together.';
-    var alreadyRated = Boolean(ratedWeeks()[String(week)]);
-    var stars = '';
-    for (var star = 1; star <= 5; star += 1) {
-      stars += '<button type="button" class="course-sync-star" data-rating="' + star + '" aria-label="' + star + (star === 1 ? ' star' : ' stars') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></button>';
-    }
     var card = modal.querySelector('.course-sync-card');
     card.className = 'course-sync-card course-sync-card-partner';
     card.innerHTML = ''
@@ -1042,8 +1059,12 @@ var CourseApi = (function () {
       + '<div class="course-sync-panel-head"><div><h3>Week ' + week + ' Progress</h3><p>All lessons completed by both partners</p></div>'
       + '<div class="course-sync-ring is-complete" style="--p:100"><span><b>' + done + '/' + total + '</b><small>Completed</small></span></div></div>'
       + '<ul class="course-sync-lessons">' + rows + '</ul>'
-      + (alreadyRated ? '' : '<p class="course-sync-rate-label">Rate Week ' + week + '</p><div class="course-sync-stars">' + stars + '</div><p class="course-sync-sync-note" hidden></p>')
-      + '<button type="button" class="course-sync-close"' + (alreadyRated ? '' : ' disabled') + '>' + (alreadyRated ? 'Close' : 'Submit rating') + '</button>'
+      + '<p class="course-sync-rate-label">Rate Week ' + week + ' and upload your worksheets.</p>'
+      + '<p class="course-sync-sync-note" hidden></p>'
+      + '<div class="course-sync-rate-actions">'
+      + '<button type="button" class="course-sync-close course-sync-later">Continue</button>'
+      + '<button type="button" class="course-sync-close">Rate Week ' + week + '</button>'
+      + '</div>'
       + '</div></div>';
     var destination = nextHref || (next ? nextModuleHref(playlistRoot()) : '');
     function closeComplete() {
@@ -1051,43 +1072,20 @@ var CourseApi = (function () {
       if (destination) window.location.href = destination;
     }
     card.querySelector('.course-sync-x').onclick = closeComplete;
-    var submit = card.querySelector('.course-sync-close');
-    if (alreadyRated) {
-      submit.onclick = closeComplete;
-    } else {
-      var selected = 0;
-      var note = card.querySelector('.course-sync-sync-note');
-      var starButtons = card.querySelectorAll('.course-sync-star');
-      for (var index = 0; index < starButtons.length; index += 1) {
-        starButtons[index].onclick = function () {
-          selected = Number(this.getAttribute('data-rating'));
-          for (var itemIndex = 0; itemIndex < starButtons.length; itemIndex += 1) {
-            starButtons[itemIndex].classList.toggle('is-on', Number(starButtons[itemIndex].getAttribute('data-rating')) <= selected);
-          }
-          submit.disabled = false;
-          note.hidden = true;
-        };
-      }
-      submit.onclick = function () {
-        if (!selected || !kajabiUserId) {
-          note.hidden = false;
-          note.textContent = 'Choose a rating from 1 to 5.';
-          return;
-        }
-        submit.disabled = true;
-        request('/api/v1/course/week-rating', {
-          method: 'POST',
-          body: { kajabiUserId: kajabiUserId, weekNumber: week, rating: selected },
-        }).then(function () {
-          rememberRating(week, selected);
-          closeComplete();
-        }).catch(function (error) {
-          submit.disabled = false;
-          note.hidden = false;
-          note.textContent = error.message || 'Could not save your rating.';
-        });
-      };
-    }
+    card.querySelector('.course-sync-later').onclick = closeComplete;
+    var rate = card.querySelector('.course-sync-close:not(.course-sync-later)');
+    var note = card.querySelector('.course-sync-sync-note');
+    rate.onclick = function () {
+      rate.disabled = true;
+      note.hidden = true;
+      openWorksheetPortal(week, function () {
+        if (destination) window.location.href = destination;
+      }).catch(function (error) {
+        rate.disabled = false;
+        note.hidden = false;
+        note.textContent = error.message || 'Could not open your ratings.';
+      });
+    };
     modal.classList.remove('is-locked');
     revealModal(modal);
   }

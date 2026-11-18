@@ -14,6 +14,14 @@ function portalRequest(params, body = z.object({}).strict()) {
 
 export const portalTokenSchema = portalRequest(z.object({ token }).passthrough());
 
+export const portalLinkQuerySchema = z.object({
+  body: z.object({}).passthrough(),
+  params: z.object({}).passthrough(),
+  query: z.object({
+    kajabiUserId: z.string().trim().min(1).max(255),
+  }),
+});
+
 export const portalWeekSchema = portalRequest(z.object({
   token,
   weekNumber: z.coerce.number().int().min(1).max(8),

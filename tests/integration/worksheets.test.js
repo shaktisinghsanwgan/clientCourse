@@ -218,6 +218,18 @@ describe('weekly ratings and worksheets', () => {
     const stolen = await request(app).get(`/api/v1/worksheets/${partnerToken}/files/${file.id}`);
     expect(stolen.status).toBe(404);
 
+    const opened = await request(app).get('/api/v1/worksheets/link').query({ kajabiUserId: JOHN.id });
+    expect(opened.status).toBe(200);
+    expect(opened.body.data.role).toBe('purchaser');
+    expect(opened.body.data.portalUrl).toContain(`/worksheets/${purchaserToken}`);
+    const framed = await request(app).get(`/worksheets/${purchaserToken}?week=1`);
+    expect(framed.status).toBe(200);
+    expect(String(framed.headers['content-security-policy'] || '')).toContain('frame-ancestors');
+    expect(framed.headers['x-frame-options']).toBeUndefined();
+
+    const missingLink = await request(app).get('/api/v1/worksheets/link').query({ kajabiUserId: 'missing-user' });
+    expect(missingLink.status).toBe(404);
+
     const admin = await request(app)
       .get(`/api/v1/admin/participants/${purchaserLink.userId}`)
       .set('x-api-key', adminKey);
