@@ -196,6 +196,40 @@ export async function saveWeekRatingContact({ email, kajabiId, role, weekNumber,
   return { field: title, handle, rating: String(rating) };
 }
 
+const PORTAL_FIELD_TITLE = 'Partner Rating & Attachment URL';
+
+export async function savePortalUrlContact({ email, kajabiId, portalUrl }) {
+  if (!isKajabiApiConfigured()) {
+    throw new ApiError(503, 'Kajabi API is not configured', 'KAJABI_API_NOT_CONFIGURED');
+  }
+  const url = String(portalUrl || '').trim();
+  if (!url) {
+    throw new ApiError(400, 'Portal URL is required', 'VALIDATION_ERROR');
+  }
+  let handle = env.KAJABI_CONTACT_FIELD_PORTAL_URL;
+  if (!handle) {
+    const discovered = await customFieldsByTitle();
+    handle = discovered.get(PORTAL_FIELD_TITLE.toLowerCase()) || '';
+  }
+  if (!handle) {
+    throw new ApiError(502, `Kajabi custom field "${PORTAL_FIELD_TITLE}" was not found`, 'KAJABI_FIELD_MISSING');
+  }
+  const contact = await findContact(email, kajabiId);
+  if (!contact) {
+    throw new ApiError(404, 'Kajabi contact was not found for this account', 'IDENTITY_NOT_FOUND');
+  }
+  await kajabiPublicRequest('PATCH', `/v1/contacts/${encodeURIComponent(contact.id)}`, {
+    body: {
+      data: {
+        type: 'contacts',
+        id: contact.id,
+        attributes: { [handle]: url },
+      },
+    },
+  });
+  return { field: PORTAL_FIELD_TITLE, handle, contactId: contact.id };
+}
+
 export async function syncInvitedPartnerContact(input) {
   if (!isKajabiApiConfigured()) return { updated: false };
   try {

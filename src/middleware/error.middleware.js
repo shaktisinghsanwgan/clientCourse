@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
+import multer from 'multer';
 import { ApiError } from '../utils/errors.js';
+import { env } from '../config/env.js';
 
 export function notFoundHandler(req, res) {
   res.status(404).json({
@@ -25,6 +27,17 @@ export function errorHandler(error, req, res, next) {
       body.details = error.details;
     }
     res.status(error.statusCode).json(body);
+    return;
+  }
+
+  if (error instanceof multer.MulterError) {
+    const tooLarge = error.code === 'LIMIT_FILE_SIZE';
+    const maxMb = Math.max(1, Math.round(env.WORKSHEET_MAX_BYTES / (1024 * 1024)));
+    res.status(tooLarge ? 413 : 400).json({
+      success: false,
+      message: tooLarge ? `PDF must be ${maxMb} MB or smaller` : 'Upload could not be processed',
+      errorCode: tooLarge ? 'FILE_TOO_LARGE' : 'INVALID_UPLOAD',
+    });
     return;
   }
 

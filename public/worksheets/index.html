@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Weekly ratings and worksheets</title>
+  <link rel="stylesheet" href="/worksheets/portal.css">
+</head>
+<body>
+  <div id="loader" class="screen">
+    <div class="loader-card">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Loading your weekly ratings and worksheets</p>
+    </div>
+  </div>
+  <div id="error" class="screen" hidden>
+    <div class="loader-card">
+      <h1>This link cannot be opened</h1>
+      <p id="error-message">This worksheet link is invalid or has expired.</p>
+    </div>
+  </div>
+  <div id="app" hidden>
+    <header class="top">
+      <div>
+        <p id="program" class="eyebrow"></p>
+        <h1 id="participant-name"></h1>
+      </div>
+      <p id="participant-role" class="role"></p>
+    </header>
+    <main>
+      <section class="progress-card" aria-live="polite">
+        <div class="progress-copy">
+          <p id="progress-label"></p>
+          <strong id="progress-percent"></strong>
+        </div>
+        <div class="bar" aria-hidden="true"><span id="progress-bar"></span></div>
+      </section>
+      <section class="panel" aria-labelledby="rating-heading">
+        <div id="weeks" class="weeks" role="tablist" aria-label="Weeks"></div>
+        <h2 id="rating-heading"></h2>
+        <p id="rating-description"></p>
+        <form id="rating-form" novalidate></form>
+        <p id="form-note" class="note" role="status"></p>
+        <div class="actions">
+          <button type="button" id="save-progress" class="button button-quiet">Save Progress</button>
+          <button type="button" id="submit-week" class="button">Submit Week</button>
+          <button type="button" id="edit-week" class="button button-quiet" hidden>Edit submission</button>
+        </div>
+      </section>
+      <button type="button" id="open-worksheets" class="button button-wide">My Worksheets</button>
+    </main>
+  </div>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <div>
+          <h2 id="modal-title">My Worksheets</h2>
+          <p>Upload your completed worksheets and track your progress throughout the program.</p>
+        </div>
+        <button type="button" id="close-worksheets" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <div id="worksheet-list"></div>
+    </div>
+  </div>
+  <script src="/worksheets/portal.js"></script>
+</body>
+</html>

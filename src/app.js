@@ -15,6 +15,8 @@ import chapterRoutes from './routes/chapter.routes.js';
 import progressRoutes from './routes/progress.routes.js';
 import integrationRoutes from './routes/integration.routes.js';
 import statusRoutes from './routes/status.routes.js';
+import worksheetRoutes from './routes/worksheet.routes.js';
+import adminWorksheetRoutes from './routes/admin-worksheet.routes.js';
 
 export const app = express();
 
@@ -48,6 +50,22 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+const portalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => env.NODE_ENV === 'test',
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests',
+      errorCode: 'RATE_LIMITED',
+    });
+  },
+});
+app.use('/api/v1/worksheets', portalLimiter);
+
 app.get('/api/v1/health', asyncHandler(async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -72,9 +90,23 @@ app.use('/api/v1/chapters', chapterRoutes);
 app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
 app.use('/api/v1/status', statusRoutes);
+app.use('/api/v1/worksheets', worksheetRoutes);
+app.use('/api/v1/admin', adminWorksheetRoutes);
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../public');
 app.use(express.static(publicDir));
+
+function sendPage(res, fileName) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(path.join(publicDir, fileName));
+}
+
+app.get('/worksheets/:token', (req, res) => {
+  sendPage(res, 'worksheets/index.html');
+});
+app.get(['/admin/participants', '/admin/participants/:participantId'], (req, res) => {
+  sendPage(res, 'admin/index.html');
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);

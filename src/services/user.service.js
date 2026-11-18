@@ -14,6 +14,9 @@ import {
 } from './kajabi.service.js';
 import { syncSignedUpPartnerContacts } from './kajabi-contact.service.js';
 import { notifyPartnerInviteShown } from './partner-invite-notice.service.js';
+import { ensurePortalLink } from './portal-link.service.js';
+import { purgeParticipantContent } from './worksheet.service.js';
+import { removeStoredFiles } from './worksheet-storage.service.js';
 
 function signToken(user) {
   return jwt.sign(
@@ -64,10 +67,20 @@ function verificationFields(verification, existing) {
   return fields;
 }
 
+async function rememberPortal(user) {
+  if (!user?.id) return;
+  try {
+    await ensurePortalLink(user, env.APP_BASE_URL);
+  } catch (error) {
+    console.error(`Portal link skipped for user ${user.id}: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
 async function clearPurchaserHistory(tx, purchaserId) {
   const partnership = await tx.partner.findUnique({ where: { primaryUserId: purchaserId } });
   const partnerUserId = partnership?.partnerUserId || null;
   const userIds = [purchaserId, partnerUserId].filter(Boolean);
+  const storagePaths = await purgeParticipantContent(tx, userIds);
 
   await tx.chapterProgress.deleteMany({ where: { userId: { in: userIds } } });
   await tx.progress.deleteMany({ where: { userId: { in: userIds } } });
@@ -83,6 +96,7 @@ async function clearPurchaserHistory(tx, purchaserId) {
     }
   }
   await tx.user.delete({ where: { id: purchaserId } });
+  return storagePaths;
 }
 
 export async function registerPurchaser(input) {
@@ -117,16 +131,19 @@ export async function registerPurchaser(input) {
     ...fields,
   };
 
+  let storagePaths = [];
   const user = await prisma.$transaction(async (tx) => {
-    if (existing) await clearPurchaserHistory(tx, existing.id);
+    if (existing) storagePaths = await clearPurchaserHistory(tx, existing.id);
     return tx.user.create({ data });
   });
+  await removeStoredFiles(storagePaths);
 
   try {
     await notifyPartnerInviteShown(user.kajabiUserId || '', { purchaserEmail: user.email });
   } catch (error) {
     console.error(`Partner invite email failed for user ${user.id}: ${error.message}`);
   }
+  await rememberPortal(user);
 
   return {
     created: true,
@@ -327,6 +344,7 @@ export async function resolveLoginByKajabiCustomerId(customerId) {
   const kajabiUserId = String(customerId || '').trim();
   const linked = await prisma.user.findUnique({ where: { kajabiUserId } });
   if (linked && linked.status === 'ACTIVE') {
+    await rememberPortal(linked);
     return {
       ...(await authPayload(linked)),
       ...rolePayload(linked),
@@ -366,6 +384,7 @@ export async function attachCheckoutLogin(input) {
     throw new ApiError(409, 'This login is already linked to another email.', 'IDENTITY_CONFLICT');
   }
   if (existing.kajabiUserId === kajabiUserId) {
+    await rememberPortal(existing);
     return {
       ...(await authPayload(existing)),
       ...rolePayload(existing),
@@ -380,6 +399,7 @@ export async function attachCheckoutLogin(input) {
       lastSeenAt: new Date(),
     },
   });
+  await rememberPortal(updated);
   return {
     ...(await authPayload(updated)),
     ...rolePayload(updated),
@@ -425,6 +445,7 @@ export async function bindKajabiIdentity(input) {
     });
   }
 
+  await rememberPortal(updated);
   return {
     ...(await authPayload(updated)),
     ...rolePayload(updated),
@@ -488,7 +509,9 @@ export async function loginByEmail(emailInput) {
     throw new ApiError(404, 'Account not found', 'IDENTITY_NOT_FOUND');
   }
 
-  return authPayload(await touchActivity(user.id));
+  const active = await touchActivity(user.id);
+  await rememberPortal(active);
+  return authPayload(active);
 }
 
 export async function applyVerifiedPurchaseWebhook(body) {
@@ -541,6 +564,7 @@ export async function applyVerifiedPurchaseWebhook(body) {
     ? await prisma.user.update({ where: { id: existing.id }, data })
     : await prisma.user.create({ data });
 
+  await rememberPortal(user);
   return {
     ignored: false,
     user: toPublicUser(user),

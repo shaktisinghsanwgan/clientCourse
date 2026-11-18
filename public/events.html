@@ -1,0 +1,873 @@
+<script>
+    window.weddingEvents = {
+        "label": "Wedding Events",
+        "value": "wedding-events",
+        "subEvents": [{
+            "label": "Engagement",
+            "value": "engagement",
+            "inputs": {
+                "engagement_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "engagement_standard_deliverables": [{
+                    "label": "50–100 Professionally Edited Images",
+                    "amount": ""
+                }, {
+                    "label": "Cinematic Highlight Film",
+                    "amount": ""
+                }, {
+                    "label": "Full Event Coverage",
+                    "amount": ""
+                }, {
+                    "label": "Online Gallery Delivery",
+                    "amount": ""
+                }, {
+                    "label": "Story Book Album",
+                    "amount": ""
+                }],
+                "engagement_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "engagement_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "engagement_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Bride Haldi",
+            "value": "bride-haldi",
+            "inputs": {
+                "bride_haldi_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "bride_haldi_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Ritual & Family Coverage"
+                ],
+                "bride_haldi_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "bride_haldi_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "bride_haldi_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Groom Haldi",
+            "value": "groom_haldi",
+            "inputs": {
+                "groom_haldi_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "groom_haldi_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Ritual & Friends Coverage"
+                ],
+                "groom_haldi_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "groom_haldi_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "groom_haldi_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Mehendi",
+            "value": "mehendi",
+            "inputs": {
+                "mehendi_recommended_coverage": [{
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "mehendi_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Decor & Family Coverage"
+                ],
+                "mehendi_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "mehendi_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "mehendi_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Sangeet",
+            "value": "sangeet",
+            "inputs": {
+                "sangeet_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "sangeet_standard_deliverables": [
+                    "50–100 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Dance Performances Coverage",
+                    "Couple Entry Coverage"
+                ],
+                "sangeet_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "sangeet_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "sangeet_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Pellikuturu",
+            "value": "pellikuturu",
+            "inputs": {
+                "pellikuturu_recommended_coverage": [{
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "pellikuturu_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Ritual Coverage"
+                ],
+                "pellikuturu_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "pellikuturu_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "pellikuturu_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Pellikoduku",
+            "value": "pellikoduku",
+            "inputs": {
+                "pellikoduku_recommended_coverage": [{
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "pellikoduku_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Highlight Film",
+                    "Ritual Coverage"
+                ],
+                "pellikoduku_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "pellikoduku_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "pellikoduku_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Vratham",
+            "value": "vratham",
+            "inputs": {
+                "vratham_recommended_coverage": [{
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "vratham_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Ritual Film",
+                    "Traditional Documentation Coverage"
+                ],
+                "vratham_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "vratham_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "vratham_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Wedding Ceremony",
+            "value": "wedding-ceremony",
+            "inputs": {
+                "wedding_ceremony_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "2 Assistants",
+                    "amount": "10000"
+                }],
+                "wedding_ceremony_standard_deliverables": [
+                    "50–100 Professionally Edited Images",
+                    "Full Wedding Film",
+                    "Cinematic Highlight Film",
+                    "Ritual-Wise Documentation",
+                    "Online Gallery Delivery",
+                    "Story Book Album"
+                ],
+                "wedding_ceremony_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Family Legacy Film",
+                    "amount": "10000"
+                }],
+                "wedding_ceremony_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "wedding_ceremony_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Reception",
+            "value": "reception",
+            "inputs": {
+                "reception_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Heritage Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "reception_standard_deliverables": [
+                    "50–100 Professionally Edited Images",
+                    "Reception Highlight Film",
+                    "Couple Entry Coverage",
+                    "Stage & Guest Coverage",
+                    "Story Book Album"
+                ],
+                "reception_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Couple Interview Film",
+                    "amount": "10000"
+                }, {
+                    "label": "Live Streaming",
+                    "amount": "10000"
+                }, {
+                    "label": "LED Wall Live Feed",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "reception_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "reception_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Pre-Wedding Shoot",
+            "value": "pre-wedding-shoot",
+            "inputs": {
+                "pre-wedding_shoot_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "pre-wedding_shoot_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Pre-Wedding Film",
+                    "Social Media Reels"
+                ],
+                "pre-wedding_shoot_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Story Book Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Destination Shoot",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "pre-wedding_shoot_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "pre-wedding_shoot_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }, {
+            "label": "Post-Wedding Shoot",
+            "value": "post-wedding-shoot",
+            "inputs": {
+                "post-wedding_shoot_recommended_coverage": [{
+                    "label": "1 Storytelling Photographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Storytelling Cinematographer",
+                    "amount": "10000"
+                }, {
+                    "label": "1 Assistant",
+                    "amount": "10000"
+                }],
+                "post-wedding_shoot_standard_deliverables": [
+                    "50 Professionally Edited Images",
+                    "Cinematic Post-Wedding Film",
+                    "Romantic Portrait Coverage"
+                ],
+                "post-wedding_shoot_standard_upgrade_options": [{
+                    "label": "Our Chapter Concept Shoot & Edit (F&M)",
+                    "amount": "10000"
+                }, {
+                    "label": "Story Book Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Heirloom Luxury Album",
+                    "amount": "10000"
+                }, {
+                    "label": "Destination Shoot",
+                    "amount": "10000"
+                }, {
+                    "label": "Drone Coverage",
+                    "amount": "10000"
+                }, {
+                    "label": "Luxury Packaging Box",
+                    "amount": "10000"
+                }, {
+                    "label": "Voiceover Story Film",
+                    "amount": "10000"
+                }],
+                "post-wedding_shoot_addon_candid": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }],
+                "post-wedding_shoot_addon_traditional": [{
+                    "name": "Photographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Cinematographer",
+                    "count": 1,
+                    "amount": 10000
+                }, {
+                    "name": "Assistant",
+                    "count": 1,
+                    "amount": 10000
+                }]
+            }
+        }]
+    }
+</script>

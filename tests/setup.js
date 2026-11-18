@@ -1,8 +1,15 @@
 import { afterAll, beforeEach } from 'vitest';
 import { prisma } from '../src/config/database.js';
 import { resetKajabiCache } from '../src/services/kajabi.service.js';
+import { resetKajabiContactCache } from '../src/services/kajabi-contact.service.js';
 
 const TABLES = [
+  'weekly_rating_revisions',
+  'weekly_ratings',
+  'worksheet_files',
+  'checklist_completions',
+  'weekly_worksheet_progress',
+  'portal_access',
   'chapter_progress',
   'progress',
   'partners',
@@ -30,6 +37,7 @@ export async function resetDatabase() {
 beforeEach(async () => {
   await resetDatabase();
   resetKajabiCache();
+  resetKajabiContactCache();
 });
 
 afterAll(async () => {

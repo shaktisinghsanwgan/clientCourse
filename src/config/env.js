@@ -85,6 +85,9 @@ export const env = {
   get KAJABI_CONTACT_FIELD_PURCHASER_EMAIL() {
     return optional('KAJABI_CONTACT_FIELD_PURCHASER_EMAIL');
   },
+  get KAJABI_CONTACT_FIELD_PORTAL_URL() {
+    return optional('KAJABI_CONTACT_FIELD_PORTAL_URL');
+  },
   get ADMIN_API_KEY() {
     return optional('ADMIN_API_KEY');
   },
@@ -132,5 +135,20 @@ export const env = {
   get STATUS_LIVE_MINUTES() {
     const value = Number(optional('STATUS_LIVE_MINUTES') || 2);
     return Number.isFinite(value) && value > 0 ? value : 2;
+  },
+  get APP_BASE_URL() {
+    return optional('APP_BASE_URL').replace(/\/$/, '');
+  },
+  get WORKSHEET_STORAGE_DIR() {
+    return optional('WORKSHEET_STORAGE_DIR');
+  },
+  get WORKSHEET_MAX_BYTES() {
+    const megabytes = Number(optional('WORKSHEET_MAX_MB') || 10);
+    const size = Number.isFinite(megabytes) && megabytes > 0 ? megabytes : 10;
+    return Math.round(size * 1024 * 1024);
+  },
+  get PORTAL_LINK_DAYS() {
+    const value = Number(optional('PORTAL_LINK_DAYS') || 0);
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
   },
 };

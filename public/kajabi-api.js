@@ -287,9 +287,10 @@ var CourseApi = (function () {
       + '#course-sync-modal ul{margin:0 0 10px;padding-left:18px;}'
       + '#course-sync-modal li{margin:0 0 4px;line-height:1.35;}'
       + '#course-sync-modal label{display:block;margin:8px 0 4px;font-size:14px;font-weight:700;}'
-      + '#course-sync-modal .course-sync-rate-label{margin:12px 0 6px;font-weight:700;}'
-      + '#course-sync-modal .course-sync-stars{display:flex;gap:8px;margin:0 0 12px;}'
-      + '#course-sync-modal .course-sync-star{width:42px;height:42px;border:1px solid #e6d5cc;border-radius:10px;background:#fff;color:#c45c78;font-size:22px;line-height:1;cursor:pointer;}'
+      + '#course-sync-modal .course-sync-rate-label{margin:12px 0 6px;font-weight:700;text-align:center;}'
+      + '#course-sync-modal .course-sync-stars{display:flex;justify-content:center;align-items:center;gap:8px;width:100%;margin:0 0 12px;}'
+      + '#course-sync-modal button.course-sync-star{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;min-width:42px;margin:0;padding:0;border:1px solid #e6d5cc;border-radius:10px;background:#fff;color:#c45c78;font-size:0;line-height:0;cursor:pointer;}'
+      + '#course-sync-modal button.course-sync-star svg{display:block !important;width:20px !important;height:20px !important;min-width:20px !important;min-height:20px !important;max-width:20px !important;max-height:20px !important;margin:0 !important;}'
       + '#course-sync-modal .course-sync-star.is-on{background:#7a3048;color:#fff;border-color:#7a3048;}'
       + '#course-sync-modal input{width:100%;box-sizing:border-box;border:1px solid #d9cfc6;border-radius:8px;padding:10px 12px;font-size:16px;}'
       + '#course-sync-modal input.course-sync-input-error{border-color:#d32f2f !important;box-shadow:0 0 0 1px #d32f2f;}'
@@ -1024,7 +1025,7 @@ var CourseApi = (function () {
     var alreadyRated = Boolean(ratedWeeks()[String(week)]);
     var stars = '';
     for (var star = 1; star <= 5; star += 1) {
-      stars += '<button type="button" class="course-sync-star" data-rating="' + star + '" aria-label="' + star + (star === 1 ? ' star' : ' stars') + '">&#9733;</button>';
+      stars += '<button type="button" class="course-sync-star" data-rating="' + star + '" aria-label="' + star + (star === 1 ? ' star' : ' stars') + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></button>';
     }
     var card = modal.querySelector('.course-sync-card');
     card.className = 'course-sync-card course-sync-card-partner';

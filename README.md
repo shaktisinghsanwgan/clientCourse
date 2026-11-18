@@ -142,6 +142,38 @@ Partner link body:
 
 Admin callers also send `purchaserEmail`.
 
+## Weekly ratings and worksheets
+
+Each purchaser and partner gets a private portal. The URL is an opaque token. The Kajabi contact id is not part of the URL. The server stores only a hash of the token and writes the full URL into the existing Kajabi text field **Partner Rating & Attachment URL**. Ratings and PDF metadata stay in this database. PDF bytes are not sent to Kajabi.
+
+Set `APP_BASE_URL` to the public API origin, for example `https://<your-domain>`. On registration, partner activation, and sign-in, the server creates the token. If `APP_BASE_URL` is set and the Kajabi API is configured, it also updates that contact field. For people who already have accounts, an admin can publish every link:
+
+`POST /api/v1/admin/portal-links/sync`
+
+The field must already exist in Kajabi with that exact title. Do not create a second field. `KAJABI_CONTACT_FIELD_PORTAL_URL` can hold the field handle when the title lookup should be skipped.
+
+| Method | Path | Auth |
+| --- | --- | --- |
+| GET | `/worksheets/:token` | Portal page |
+| GET | `/api/v1/worksheets/:token` | Portal token |
+| GET | `/api/v1/worksheets/:token/weeks/:weekNumber` | Portal token |
+| POST | `/api/v1/worksheets/:token/ratings/draft` | Portal token |
+| POST | `/api/v1/worksheets/:token/ratings/submit` | Portal token |
+| POST | `/api/v1/worksheets/:token/checklist` | Portal token |
+| POST | `/api/v1/worksheets/:token/files` | Portal token, multipart PDF |
+| GET | `/api/v1/worksheets/:token/files/:fileId` | Portal token |
+| DELETE | `/api/v1/worksheets/:token/files/:fileId` | Portal token |
+| GET | `/admin/participants` | Admin page |
+| GET | `/api/v1/admin/participants` | Admin key |
+| GET | `/api/v1/admin/participants/:participantId` | Admin key |
+| GET | `/api/v1/admin/participants/:participantId/ratings` | Admin key |
+| GET | `/api/v1/admin/participants/:participantId/worksheets` | Admin key |
+| GET | `/api/v1/admin/participants/:participantId/files/:fileId` | Admin key |
+
+Draft ratings can be incomplete. Submit Week requires all three integers from 1 to 10. Submitting the same week again returns `RATING_ALREADY_SUBMITTED` unless `edit` is true, which keeps the previous submission in history. A week is complete only after the ratings are submitted and that week's checklist is marked done. Uploading a PDF does not submit the ratings.
+
+PDFs are stored outside `public/` and are downloaded only through the token or admin routes. `WORKSHEET_MAX_MB` defaults to 10. `PORTAL_LINK_DAYS=0` means links do not expire.
+
 ## Errors
 
 ```json
